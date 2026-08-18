@@ -38,8 +38,8 @@ Real state as of last check — verify again if it's been a while:
 
 | E-mail | Role | Notes |
 |---|---|---|
-| armaan20029@gmail.com | approver | The owner account. |
-| nppokh@gmail.com | approver | Real inbox. |
+| YOUR_EMAIL@example.com | approver | The owner account. |
+| COLLEAGUE_EMAIL@example.com | approver | Real inbox. |
 | sotriyusta@tozya.com | checker | **Temp-mail address with real access.** Remove once testing is done — disposable inboxes are readable by anyone who knows the address, and this one can check registrations. |
 
 Three vendor invitations exist (`solder_compnay`, `led_company`, `xyz`), all
@@ -48,7 +48,7 @@ status `registered`, all using temp-mail addresses and mock data from
 
 ## Open thread — mail delivery, unresolved
 
-Colleague invitations to `sotriyusta@tozya.com` and `nppokh@gmail.com` were
+Colleague invitations to `sotriyusta@tozya.com` and `COLLEAGUE_EMAIL@example.com` were
 created successfully (both rows exist in `staff_invitations`), but neither
 reported receiving the sign-in e-mail.
 
@@ -57,7 +57,7 @@ Resend link → the toast message it returns), or whether it succeeded and
 Brevo failed to deliver (check Brevo → Transactional → Logs) or rate-limited
 (check Supabase → Authentication → Rate Limits — SMTP defaults to 30/hour and
 today's session has sent many). Leading theory is Brevo blocking the
-disposable `tozya.com` domain, unconfirmed — `nppokh@gmail.com` (real inbox)
+disposable `tozya.com` domain, unconfirmed — `COLLEAGUE_EMAIL@example.com` (real inbox)
 not receiving anything either would rule that out.
 
 **Next action:** check Brevo's transactional log for both addresses and

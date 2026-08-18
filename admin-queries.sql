@@ -26,7 +26,7 @@ order by u.created_at;
 -- Remember: the same person cannot both check and approve a vendor.
 
 insert into public.user_roles (user_id, role)
-select id, 'approver' from auth.users where email = 'armaan20029@gmail.com'
+select id, 'approver' from auth.users where email = 'YOUR_EMAIL@example.com'
 on conflict (user_id) do update set role = excluded.role;
 
 
@@ -43,19 +43,19 @@ update auth.users
    set encrypted_password = extensions.crypt('ChangeThisPassword123!',
                                              extensions.gen_salt('bf')),
        updated_at = now()
- where email = 'armaan20029@gmail.com';
+ where email = 'YOUR_EMAIL@example.com';
 
 -- If that errors with "schema extensions does not exist", drop the
 -- prefixes and run:
 --   update auth.users
 --      set encrypted_password = crypt('ChangeThisPassword123!', gen_salt('bf')),
 --          updated_at = now()
---    where email = 'armaan20029@gmail.com';
+--    where email = 'YOUR_EMAIL@example.com';
 
 -- Confirm it took effect — should return one row with a password set:
 -- select email, (encrypted_password is not null) as has_password,
 --        (email_confirmed_at is not null) as confirmed
---   from auth.users where email = 'armaan20029@gmail.com';
+--   from auth.users where email = 'YOUR_EMAIL@example.com';
 
 
 -- ---------- Remove someone's staff access -------------------

@@ -627,7 +627,7 @@ grant select on public.vendor_overview to authenticated;
 -- different people — that is the point of the sign-off chain.
 
 -- insert into public.user_roles (user_id, role)
--- select id, 'approver' from auth.users where email = 'armaan20029@gmail.com'
+-- select id, 'approver' from auth.users where email = 'YOUR_EMAIL@example.com'
 -- on conflict (user_id) do update set role = excluded.role;
 
 -- insert into public.user_roles (user_id, role)
