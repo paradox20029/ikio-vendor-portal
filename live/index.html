@@ -1,0 +1,1503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vendor Registration Portal</title>
+<script src="config.js"></script>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --ink:#14181f; --muted:#5d6673;
+    --line:#e2e6ec; --brand:#1d4ed8; --brand-ink:#fff;
+    --ok:#0f7a4a; --okbg:#e8f6ef; --warn:#a15c00; --warnbg:#fdf3e2;
+    --bad:#b3261e; --badbg:#fdeceb; --info:#1d4ed8; --infobg:#eaf0fe;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif;
+       background:var(--bg);color:var(--ink)}
+  h1,h2,h3{margin:0;font-weight:640;letter-spacing:-.01em}
+
+  .testbar{background:#8a6d00;color:#fff;padding:7px 20px;font-size:13px;text-align:center}
+
+  header.app{background:var(--card);border-bottom:1px solid var(--line);
+             padding:14px 20px;display:flex;align-items:center;gap:12px}
+  header.app .logo{width:30px;height:30px;border-radius:7px;background:var(--brand);
+       color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+  /* A class selector beats the browser's built-in [hidden] rule, so the
+     fallback lettermark stayed visible alongside the real logo. Restore it. */
+  header.app .logo[hidden]{display:none}
+  /* Real logo when logo.png is present; the lettermark above is the fallback
+     so the header never renders as a broken image. */
+  header.app img.brand{height:34px;width:auto;display:block}
+  .printlogo{display:none}
+  header.app .who{margin-left:auto;color:var(--muted);font-size:13px;text-align:right}
+  header.app .who button{margin-left:10px;background:none;border:1px solid var(--line);
+       border-radius:6px;padding:4px 10px;font:inherit;font-size:12.5px;cursor:pointer}
+
+  main{max-width:1080px;margin:0 auto;padding:22px 20px 60px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:22px;margin-bottom:16px}
+  .card > h2{font-size:17px;margin-bottom:4px}
+  .sub{color:var(--muted);font-size:13.5px;margin-bottom:18px}
+
+  .steps{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+  .steps div{flex:1;min-width:120px;padding:9px 12px;border-radius:8px;font-size:13px;
+      background:#eef1f5;color:var(--muted);border:1px solid transparent}
+  .steps div.on{background:var(--infobg);color:var(--brand);border-color:#c3d3fb;font-weight:600}
+  .steps div.done{background:var(--okbg);color:var(--ok)}
+
+  /* Six columns so a field can be sized to its content. A PIN code in a
+     half-width box looks like a mistake; staff asked for narrower fields
+     and this is the mechanism. */
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:13px 16px}
+  .grid .c2{grid-column:span 2}
+  .grid .c3{grid-column:span 3}
+  .grid .full,.grid .c6{grid-column:span 6}
+  label{display:block;font-size:12.5px;font-weight:600;color:#3b434f;margin-bottom:5px}
+  label .req{color:var(--bad)}
+  input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);
+      border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:2px solid #bcd0fb;border-color:var(--brand)}
+  textarea{min-height:70px;resize:vertical}
+  .hint{font-size:12px;color:var(--muted);margin-top:4px}
+  .err{font-size:12px;color:var(--bad);margin-top:4px;display:none}
+  .bad input{border-color:var(--bad);background:#fffafa}
+  .bad .err{display:block}
+  fieldset{border:1px solid var(--line);border-radius:10px;padding:16px;margin:0 0 16px}
+  legend{font-size:12.5px;font-weight:700;color:var(--muted);padding:0 6px;
+         text-transform:uppercase;letter-spacing:.05em}
+  .radios{display:flex;gap:18px;align-items:center;padding-top:4px}
+  .radios label{display:flex;gap:6px;align-items:center;font-weight:500;margin:0}
+  .radios input{width:auto}
+
+  .btn{padding:9px 16px;border-radius:8px;border:1px solid var(--line);
+       background:#fff;font:inherit;font-weight:600;cursor:pointer;color:var(--ink)}
+  .btn:hover{background:#f2f4f8}
+  .btn.pri{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+  .btn.pri:hover{filter:brightness(1.08)}
+  .btn.danger{color:var(--bad);border-color:#f0c4c1}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:18px}
+  .row .sp{flex:1}
+
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;
+     color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line)}
+  td{padding:11px 10px;border-bottom:1px solid #eef1f5}
+  tbody tr[data-id]{cursor:pointer}
+  tbody tr[data-id]:hover{background:#f7f9fc}
+
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11.5px;
+        font-weight:700;letter-spacing:.02em}
+  .p-draft{background:#eef1f5;color:var(--muted)}
+  .p-pending{background:#eef1f5;color:var(--muted)}
+  .p-submitted{background:var(--infobg);color:var(--info)}
+  .p-checked{background:var(--warnbg);color:var(--warn)}
+  .p-approved,.p-registered{background:var(--okbg);color:var(--ok)}
+  .p-rejected,.p-expired{background:var(--badbg);color:var(--bad)}
+
+  .kv{display:grid;grid-template-columns:210px 1fr;gap:9px 16px;font-size:14px}
+  .kv dt{color:var(--muted);font-size:13px}
+  .kv dd{margin:0}
+  .mono{font-family:"Cascadia Mono",Consolas,monospace;font-size:13.5px}
+
+  .banner{border-radius:9px;padding:11px 14px;font-size:13.5px;margin-bottom:16px}
+  .b-info{background:var(--infobg);color:#1a3a9e}
+  .b-ok{background:var(--okbg);color:var(--ok)}
+  .b-warn{background:var(--warnbg);color:var(--warn)}
+  .b-bad{background:var(--badbg);color:var(--bad)}
+
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:18px}
+  .tabs button{background:none;border:none;border-bottom:2px solid transparent;
+       padding:9px 14px;font:inherit;font-weight:600;color:var(--muted);cursor:pointer}
+  .tabs button.on{color:var(--brand);border-bottom-color:var(--brand)}
+
+  dialog{border:none;border-radius:12px;padding:0;max-width:560px;width:92%;
+         box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  dialog::backdrop{background:rgba(15,20,30,.45)}
+  .dlg{padding:22px}
+
+  .note{font-size:12.5px;color:var(--muted);border-left:3px solid var(--line);
+        padding-left:12px;margin-top:16px}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+     background:#22262e;color:#fff;padding:11px 18px;border-radius:9px;font-size:14px;
+     box-shadow:0 8px 30px rgba(0,0,0,.3);z-index:99;max-width:90%}
+  .center{max-width:430px;margin:60px auto}
+  .spin{display:inline-block;width:15px;height:15px;border:2px solid #c3d3fb;
+    border-top-color:var(--brand);border-radius:50%;animation:sp .7s linear infinite;
+    vertical-align:-2px;margin-right:7px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media(max-width:820px){
+    .grid .c2,.grid .c3{grid-column:span 3}
+  }
+  @media(max-width:560px){
+    .grid .c2,.grid .c3,.grid .c6,.grid .full{grid-column:span 6}
+    .kv{grid-template-columns:1fr}
+  }
+
+  /* Printing produces the signed copy the vendor returns, so it must show
+     the details and nothing else — no buttons, no upload slots, no banner. */
+  @media print{
+    .printlogo{display:block !important;height:40px;width:auto;margin-bottom:14px}
+    .testbar, .steps, .row, .note, .tabs, header.app .who,
+    fieldset:has(#printForm), fieldset:has([data-doc]),
+    .banner, #dlg { display:none !important; }
+    body{background:#fff}
+    main{max-width:none;padding:0}
+    .card{border:none;padding:0;margin:0}
+    fieldset{break-inside:avoid}
+    .sign{display:block !important;margin-top:36px;
+          border-top:1px solid #000;padding-top:8px;width:280px;font-size:13px}
+  }
+  .sign{display:none}
+</style>
+</head>
+<body>
+
+<div class="testbar" id="testbar" hidden>
+  TEST ENVIRONMENT — please do not enter real bank details
+</div>
+
+<header class="app" id="hdr">
+  <img class="brand" src="logo.png" alt="IKIO"
+       onerror="this.remove();document.getElementById('lettermark').hidden=false">
+  <div class="logo" id="lettermark" hidden>IK</div>
+  <div>
+    <h1 style="font-size:16px">Vendor Registration Portal</h1>
+    <div style="font-size:12.5px;color:var(--muted)" id="orgName"></div>
+  </div>
+  <div class="who" id="who"></div>
+</header>
+
+<main id="app"><div class="center"><div class="card"><span class="spin"></span>Starting…</div></div></main>
+
+<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+/* ================= setup ================= */
+
+const URL_ = window.SUPABASE_URL, KEY_ = window.SUPABASE_ANON_KEY;
+const app = document.getElementById("app");
+
+if(!URL_ || URL_.startsWith("PASTE_")){
+  app.innerHTML = `<div class="center"><div class="card">
+    <h2>Not configured yet</h2>
+    <div class="sub">Open <span class="mono">config.js</span> and paste your
+      Supabase Project URL and anon key, then reload this page.</div>
+    <div class="note">Both values are on the Supabase dashboard under
+      Project Settings → Data API. The anon key is meant to be public — do not
+      use the <span class="mono">service_role</span> key here.</div>
+  </div></div>`;
+  throw new Error("config.js not filled in");
+}
+
+const sb = createClient(URL_, KEY_);
+
+document.getElementById("orgName").textContent = window.PORTAL_ORG || "";
+if(window.PORTAL_TEST_MODE) document.getElementById("testbar").hidden = false;
+
+const CURRENCIES = ["INR","USD","EUR","GBP","AED"];
+const INCO = ["EXW","FOB","CIF","CFR","DDP","DAP"];
+const COUNTRIES = ["India","Germany","China","Singapore","United States","United Arab Emirates"];
+
+/* States and union territories. Only offered when Country is India;
+   elsewhere the field stays free text, since we cannot list every
+   region of every country. */
+const STATES_IN = [
+  "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa",
+  "Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala",
+  "Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland",
+  "Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura",
+  "Uttar Pradesh","Uttarakhand","West Bengal",
+  "Andaman and Nicobar Islands","Chandigarh",
+  "Dadra and Nagar Haveli and Daman and Diu","Delhi","Jammu and Kashmir",
+  "Ladakh","Lakshadweep","Puducherry"
+];
+
+const RX = {
+  gstin_no:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/,
+  pan_no:/^[A-Z]{5}[0-9]{4}[A-Z]$/,
+  tan_no:/^[A-Z]{4}[0-9]{5}[A-Z]$/,
+  ifsc_code:/^[A-Z]{4}0[A-Z0-9]{6}$/,
+  swift_code:/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/,
+  account_number:/^[0-9A-Z]{9,34}$/
+};
+const RX_MSG = {
+  gstin_no:"15 characters, e.g. 09AAACM1234F1Z5",
+  pan_no:"10 characters, e.g. AAACM1234F",
+  tan_no:"10 characters, e.g. DELM12345B",
+  ifsc_code:"11 characters, 5th must be 0, e.g. HDFC0001234",
+  swift_code:"8 or 11 characters, e.g. COBADEFFXXX",
+  account_number:"9–34 digits or letters",
+  acct2:"The two account numbers do not match"
+};
+
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtDate = s => s ? new Date(s).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}) : "—";
+const isIndia = v => (v.country||"").toLowerCase() === "india";
+
+function toast(msg, ms){
+  const t = document.createElement("div");
+  t.className = "toast"; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), ms || 3600);
+}
+/* Every RPC can raise a real business rule. Show it verbatim — the messages
+   are written for the user, not for a log. */
+/* Constraint names are meaningful to Postgres and meaningless to a vendor.
+   Translate the ones we defined; pass anything else through unchanged. */
+const CONSTRAINT_MSG = {
+  pan_format:   "PAN must look like AAACM1234F — 5 letters, 4 digits, 1 letter.",
+  tan_format:   "TAN must look like DELM12345B — 4 letters, 5 digits, 1 letter.",
+  gstin_format: "GSTIN must be 15 characters, e.g. 09AAACM1234F1Z5.",
+  ifsc_format:  "IFSC must be 11 characters with 0 as the fifth, e.g. HDFC0001234.",
+  swift_format: "SWIFT must be 8 or 11 characters, e.g. COBADEFFXXX.",
+  acct_format:  "Account number must be 9–34 digits or letters.",
+  pin_format:   "PIN code looks wrong — 4 to 10 characters."
+};
+/* Postgres error codes worth naming, because "Not authorised" and
+   "that function does not exist" look identical to a user and mean
+   completely different things — one is a permission problem, the other
+   means a fix-NN.sql has not been run yet. */
+function errDetail(e){
+  if(!e) return "";
+  if(e.code === "PGRST202") return " (that database function is missing — run the outstanding fix-*.sql)";
+  if(e.code === "42501")    return " (database permission denied)";
+  if(e.code === "P0001")    return "";                    // our own raise exception
+  return e.code ? ` (${e.code})` : "";
+}
+function fail(e){
+  let msg = ((e && (e.message||e.error_description)) || "Something went wrong") + errDetail(e);
+  for(const [name, friendly] of Object.entries(CONSTRAINT_MSG)){
+    if(msg.includes(name)) { msg = friendly; break; }
+  }
+  toast(msg, 5200);
+}
+
+function showDialog(html, after){
+  const d = document.getElementById("dlg");
+  document.getElementById("dlgBody").innerHTML = html;
+  d.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>d.close());
+  if(after) after();
+  d.showModal();
+}
+function busy(msg){ app.innerHTML = `<div class="center"><div class="card"><span class="spin"></span>${esc(msg)}</div></div>`; }
+
+/* Where a sign-in link should land the recipient. On a deployed site this
+   must be the public URL: a link pointing at localhost is useless to
+   anyone but the person who sent it. */
+function portalUrl(){
+  return (window.PORTAL_URL && window.PORTAL_URL.trim())
+      || location.href.split("#")[0];
+}
+const onLocalhost = () => /^(localhost|127\.)/.test(location.hostname);
+
+/* Sends the vendor a one-time sign-in link. Used both when an invitation
+   is first created and when staff resend it, since links expire long
+   before the 30-day invitation does. */
+async function emailSignInLink(email){
+  const { error } = await sb.auth.signInWithOtp({
+    email, options:{ emailRedirectTo: portalUrl() }
+  });
+  if(!error) return null;
+  // A bare "HTTP 504" tells the user nothing. A timeout here almost always
+  // means Supabase could not reach the SMTP provider, which is a settings
+  // problem rather than anything the portal did.
+  const s = error.status || 0;
+  if(s === 504 || s === 502 || s === 503)
+    return new Error("Mail server did not respond (HTTP " + s + "). Check "
+      + "Authentication -> Emails -> SMTP Settings: try port 465 instead of "
+      + "587, confirm the sender address is verified, and check the Auth logs.");
+  if(s === 429)
+    return new Error("Rate limit reached. Wait, or raise it under "
+      + "Authentication -> Rate Limits.");
+  return error;
+}
+
+/* ================= session ================= */
+
+let SESSION = null, ME = { email:"", isStaff:false, isApprover:false, isViewer:false, staffId:null };
+let VENDOR = null, BANK_MASK = null;
+
+async function boot(){
+  const { data:{ session } } = await sb.auth.getSession();
+  SESSION = session;
+  // The header stays on every screen, sign-in included, so the branding is
+  // consistent. Only the signed-in-as block depends on there being a session.
+  if(!SESSION){ document.getElementById("who").innerHTML = ""; return renderLogin(); }
+  ME.email = SESSION.user.email;
+  ME.staffId = SESSION.user.id;
+
+  busy("Signing you in…");
+  // Attach any colleague invitation waiting for this address, before we
+  // ask what role they hold. Returns null and does nothing for everyone else.
+  try{ await sb.rpc("claim_staff_role"); }catch(e){ /* not invited — fine */ }
+  try{
+    const [{ data:staff }, { data:appr }, { data:view }] = await Promise.all([
+      sb.rpc("is_staff"),
+      sb.rpc("has_role", { p_role:"approver" }),
+      sb.rpc("has_role", { p_role:"viewer" })
+    ]);
+    ME.isStaff = !!staff; ME.isApprover = !!appr; ME.isViewer = !!view;
+  }catch(e){ /* treated as vendor */ }
+
+  document.getElementById("who").innerHTML =
+    `Signed in as <b>${esc(ME.email)}</b>${ME.isStaff
+       ? ` · ${ME.isApprover?"Approver":ME.isViewer?"View only":"Checker"}` : ""}
+     ${ME.isStaff?`<button id="setpw">Set password</button>`:""}
+     <button id="out">Sign out</button>`;
+  document.getElementById("out").onclick = async ()=>{
+    await sb.auth.signOut(); location.reload();
+  };
+
+  /* Staff sign in by e-mail link first; this lets them set a password
+     afterwards so they are not dependent on the mailer every time. Offered
+     to staff only — for vendors a password is a liability, not a
+     convenience, and the whole point of magic links is that 512 external
+     companies never need one. */
+  const pw = document.getElementById("setpw");
+  if(pw) pw.onclick = ()=>{
+    showDialog(`<h2>Set a password</h2>
+      <div class="sub" style="margin:10px 0 14px">Optional. With one set you can
+        sign in directly instead of waiting for an e-mail link. The e-mail link
+        keeps working either way.</div>
+      <label>New password</label>
+      <input id="pw1" type="password" autocomplete="new-password">
+      <div class="hint">At least 8 characters.</div>
+      <label style="margin-top:12px">Confirm password</label>
+      <input id="pw2" type="password" autocomplete="new-password">
+      <div class="row" style="margin-top:16px"><span class="sp"></span>
+        <button class="btn" data-close>Cancel</button>
+        <button class="btn pri" id="pwSave">Save password</button></div>`, ()=>{
+      document.getElementById("pwSave").onclick = async ()=>{
+        const a = document.getElementById("pw1").value;
+        const b = document.getElementById("pw2").value;
+        if(a.length < 8) return toast("Use at least 8 characters");
+        if(a !== b) return toast("The two passwords do not match");
+        const { error } = await sb.auth.updateUser({ password:a });
+        if(error) return fail(error);
+        document.getElementById("dlg").close();
+        toast("Password set — you can now sign in with it");
+      };
+    });
+  };
+
+  if(ME.isStaff) return renderStaff();
+  return startVendor();
+}
+
+sb.auth.onAuthStateChange((ev)=>{ if(ev === "SIGNED_IN" && !SESSION) boot(); });
+
+/* ================= login ================= */
+
+function renderLogin(){
+  app.innerHTML = `<div class="center"><div class="card">
+    <h2>Sign in</h2>
+    <div class="sub">Enter the e-mail address your invitation was sent to.
+      We will e-mail you a link — there is no password to remember.</div>
+    <label>E-mail address</label>
+    <input id="loginEmail" type="email" placeholder="accounts@yourcompany.example" autocomplete="email">
+    <div class="row"><span class="sp"></span>
+      <button class="btn pri" id="sendLink">E-mail me a sign-in link</button></div>
+    <div class="note">If you were not invited, this portal will tell you so
+      after you sign in. Contact your IKIO representative to be added.</div>
+    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+      <button class="btn" id="showPwd" style="font-size:13px;padding:6px 12px">
+        IKIO staff — sign in with a password</button>
+      <div id="pwdBox" hidden style="margin-top:12px">
+        <label>Password</label>
+        <input id="loginPwd" type="password" autocomplete="current-password">
+        <div class="row"><span class="sp"></span>
+          <button class="btn pri" id="pwdGo">Sign in</button></div>
+        <div class="hint">For internal staff accounts created in the Supabase
+          dashboard. Vendors use the e-mail link above.</div>
+      </div>
+    </div>
+  </div></div>`;
+
+  const go = async ()=>{
+    const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast("Enter a valid e-mail address");
+    const btn = document.getElementById("sendLink");
+    btn.disabled = true; btn.textContent = "Sending…";
+    const { error } = await sb.auth.signInWithOtp({
+      email, options:{ emailRedirectTo: portalUrl() }
+    });
+    if(error){ btn.disabled=false; btn.textContent="E-mail me a sign-in link"; return fail(error); }
+    app.innerHTML = `<div class="center"><div class="card">
+      <h2>Check your inbox</h2>
+      <div class="sub">We sent a sign-in link to <b>${esc(email)}</b>.
+        Open it on this device. The link expires shortly, so if it does not
+        arrive within a few minutes, check spam and try again.</div>
+    </div></div>`;
+  };
+  document.getElementById("sendLink").onclick = go;
+  document.getElementById("loginEmail").addEventListener("keydown", e=>{ if(e.key==="Enter") go(); });
+
+  /* Password sign-in, for internal staff only. Two reasons it exists:
+     it keeps the mailer off the critical path for the people who
+     administer the portal, and staff are known colleagues rather than
+     512 external companies, so the password-reset burden that makes
+     magic links right for vendors does not apply here. */
+  document.getElementById("showPwd").onclick = ()=>{
+    const box = document.getElementById("pwdBox");
+    box.hidden = !box.hidden;
+    if(!box.hidden) document.getElementById("loginPwd").focus();
+  };
+  const pwdGo = async ()=>{
+    const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+    const password = document.getElementById("loginPwd").value;
+    if(!email) return toast("Enter your e-mail address above first");
+    if(!password) return toast("Enter your password");
+    const btn = document.getElementById("pwdGo");
+    btn.disabled = true; btn.textContent = "Signing in…";
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    btn.disabled = false; btn.textContent = "Sign in";
+    if(error) return fail(error);
+    location.reload();
+  };
+  document.getElementById("pwdGo").onclick = pwdGo;
+  document.getElementById("loginPwd").addEventListener("keydown", e=>{ if(e.key==="Enter") pwdGo(); });
+}
+
+/* ================= vendor ================= */
+
+let step = 1;
+
+async function startVendor(){
+  busy("Loading your registration…");
+  // claim_invitation() is idempotent: it matches the invitation to the address
+  // we just proved control of, and returns the existing row if already claimed.
+  const { error:claimErr } = await sb.rpc("claim_invitation");
+  const { data:rows, error } = await sb.from("vendors").select("*").limit(1);
+  if(error) return fail(error);
+
+  if(!rows || !rows.length){
+    app.innerHTML = `<div class="center"><div class="card">
+      <h2>No invitation found</h2>
+      <div class="sub">${esc(claimErr?.message || "This address has not been invited yet.")}</div>
+      <div class="note">Registrations are by invitation only. Please contact
+        your IKIO representative and ask them to invite
+        <b>${esc(ME.email)}</b>.</div>
+    </div></div>`;
+    return;
+  }
+  VENDOR = rows[0];
+  // Match the model to what the dropdowns visibly show on a fresh form,
+  // so an untouched Country of "India" is genuinely India from the start.
+  VENDOR.country        = VENDOR.country        || COUNTRIES[0];
+  VENDOR.order_currency = VENDOR.order_currency || CURRENCIES[0];
+  VENDOR.inco_terms     = VENDOR.inco_terms     || INCO[0];
+  VENDOR.bank = { beneficiary_name:"", bank_name_addr:"", account_number:"", ifsc_code:"", swift_code:"" };
+  const { data:mask } = await sb.rpc("get_my_bank_last4");
+  BANK_MASK = (mask && mask[0]) || null;
+
+  // Load what has already been attached. Without this an upload appears
+  // to vanish the moment the step re-renders, and the vendor re-uploads
+  // the same file wondering why it did not take.
+  const { data:docs } = await sb.from("vendor_documents")
+    .select("doc_type,file_name,uploaded_at").eq("vendor_id", VENDOR.id);
+  VENDOR.docs = docs || [];
+
+  step = 1;
+  renderVendor();
+}
+
+function field(v, key, label, opts){
+  opts = opts || {};
+  const val = opts.bank ? (v.bank[key] ?? "") : (v[key] ?? "");
+  const req = opts.req ? ' <span class="req">*</span>' : "";
+  let ctl;
+  if(opts.type === "textarea")
+    ctl = `<textarea data-k="${key}" ${opts.bank?'data-bank="1"':''}>${esc(val)}</textarea>`;
+  else if(opts.options){
+    // A value already on file that is not in the list (older free-text
+    // entries, say) is kept as an option rather than silently reset.
+    let list = opts.options.slice();
+    if(val && !list.includes(val)) list.unshift(val);
+    ctl = `<select data-k="${key}" ${opts.bank?'data-bank="1"':''}>`+
+      (opts.blank && !val ? `<option value=""></option>` : "") +
+      list.map(o=>`<option ${o===val?"selected":""}>${esc(o)}</option>`).join("")+`</select>`;
+  }
+  else
+    ctl = `<input data-k="${key}" ${opts.bank?'data-bank="1"':''} value="${esc(val)}"
+           ${opts.upper?'data-upper="1"':''} ${opts.ph?`placeholder="${esc(opts.ph)}"`:""}>`;
+  const span = opts.full ? "full" : ("c" + (opts.span || 3));
+  return `<div class="${span}" data-wrap="${key}">
+    <label>${label}${req}</label>${ctl}
+    ${opts.hint?`<div class="hint">${esc(opts.hint)}</div>`:""}
+    <div class="err">${esc(RX_MSG[key]||"Required")}</div></div>`;
+}
+
+function renderVendor(){
+  const v = VENDOR;
+  if(v.status !== "draft") return renderVendorSubmitted(v);
+  const india = isIndia(v);
+  let body = "";
+
+  if(step === 1){
+    body = `<fieldset><legend>Company &amp; address</legend><div class="grid">
+      ${field(v,"company_name","Company Name",{req:1,full:1})}
+      ${field(v,"address1","Address line 1",{req:1,full:1})}
+      ${field(v,"address2","Address line 2",{span:3})}
+      ${field(v,"address3","Address line 3",{span:3})}
+      ${field(v,"city","City",{req:1,span:2})}
+      ${india
+        ? field(v,"region","State / UT",{req:1,span:2,options:STATES_IN,blank:1})
+        : field(v,"region","State / Province",{req:1,span:2})}
+      ${field(v,"pin_code","PIN / Post code",{req:1,span:2})}
+      ${field(v,"country","Country",{req:1,span:2,options:COUNTRIES})}
+    </div></fieldset>
+    <fieldset><legend>Commercial terms</legend><div class="grid">
+      ${field(v,"payment_terms","Payment Terms",{req:1,span:2,ph:"e.g. 45 days from invoice"})}
+      ${field(v,"order_currency","Order Currency",{req:1,span:2,options:CURRENCIES})}
+      ${field(v,"inco_terms","INCO Terms",{req:1,span:2,options:INCO})}
+      ${field(v,"nature_of_work","Nature of Work",{req:1,type:"textarea",full:1})}
+    </div></fieldset>
+    <fieldset><legend>Contact</legend><div class="grid">
+      ${field(v,"mobile_no","Mobile No.",{req:1,span:2})}
+      ${field(v,"telephone_no","Telephone No.",{span:2})}
+      ${field(v,"fax_no","FAX No.",{span:2})}
+      ${field(v,"contact_sales","Contact Person — Sales",{req:1,span:3})}
+      ${field(v,"email_sales","E-Mail ID — Sales",{req:1,span:3})}
+      ${field(v,"contact_finance","Contact Person — Finance &amp; Accounts",{req:1,span:3})}
+      ${field(v,"email_finance","E-Mail ID — Finance &amp; Accounts",{req:1,span:3})}
+    </div></fieldset>`;
+  }
+
+  if(step === 2){
+    body = india ? `<fieldset><legend>Statutory</legend><div class="grid">
+        ${field(v,"pan_no","PAN No.",{req:1,upper:1,span:2})}
+        ${field(v,"tan_no","TAN No.",{upper:1,span:2})}
+        ${field(v,"gstin_no","GSTIN No.",{req:1,upper:1,span:2})}
+        <div class="full">
+          <label>Whether party covered under the MSMED Act <span class="req">*</span></label>
+          <div class="radios">
+            <label><input type="radio" name="msmed" value="yes" ${v.msmed_covered===true?"checked":""}> Yes</label>
+            <label><input type="radio" name="msmed" value="no" ${v.msmed_covered===false?"checked":""}> No</label>
+          </div>
+        </div>
+        <div class="full" id="msmedBox" style="${v.msmed_covered===true?"":"display:none"}">
+          <label>MSMED certificate <span class="req">*</span></label>
+          <input type="file" id="msmedFile" accept=".pdf,.jpg,.jpeg,.png">
+          <div class="hint" id="msmedHint">${
+            (v.docs||[]).some(d=>d.doc_type==="msmed_certificate")
+              ? "Attached: " + esc((v.docs.find(d=>d.doc_type==="msmed_certificate")||{}).file_name || "certificate")
+              : "Required when covered under the Act."}</div>
+        </div>
+      </div></fieldset>`
+      : `<div class="banner b-info">Overseas vendor — Indian statutory fields
+         (PAN, TAN, GSTIN, MSMED) do not apply and are hidden.</div>`;
+
+    body += `<fieldset><legend>Bank detail</legend>
+      ${BANK_MASK ? `<div class="banner b-info">Bank details are already on file
+        (${esc(BANK_MASK.masked)}). Re-entering them below will replace them.</div>` : ""}
+      <div class="grid">
+      ${field(v,"beneficiary_name","Beneficiary Name",{req:1,bank:1,full:1})}
+      ${field(v,"bank_name_addr","Bank Name &amp; Address",{req:1,bank:1,type:"textarea",full:1})}
+      ${field(v,"account_number","Bank A/c No.",{req:1,bank:1,upper:1,span:2})}
+      <div class="c2" data-wrap="acct2">
+        <label>Re-enter Bank A/c No. <span class="req">*</span></label>
+        <input id="acct2" data-upper="1">
+        <div class="err">${RX_MSG.acct2}</div>
+      </div>
+      ${india ? field(v,"ifsc_code","Bank IFSC Code",{req:1,bank:1,upper:1,span:2})
+              : field(v,"swift_code","SWIFT Code",{req:1,bank:1,upper:1,span:2})}
+    </div></fieldset>`;
+  }
+
+  if(step === 3){
+    const slot = (type, label, hint) => {
+      const got = (v.docs||[]).find(d=>d.doc_type===type);
+      return `<div class="full" style="padding:10px 0;border-bottom:1px solid var(--line)">
+        <label>${label}</label>
+        <input type="file" data-doc="${type}" accept=".pdf,.jpg,.jpeg,.png">
+        <div class="hint" data-dochint="${type}">${
+          got ? "Attached: " + esc(got.file_name||"file") : esc(hint)}</div>
+      </div>`;
+    };
+    body = `<div class="banner b-info">Check everything below, then submit.
+      After submitting you will not be able to edit — IKIO can send it back to
+      you for correction if something needs changing.</div>
+      ${summaryHTML(v, vendorBankView())}
+
+      <fieldset><legend>Signed registration form</legend>
+        <div class="sub" style="margin-bottom:12px">Print this page (or save it
+          as PDF), sign and stamp it, then upload the scan. The printed copy
+          carries exactly the details shown above.</div>
+        <button class="btn" id="printForm" type="button">Print / save as PDF</button>
+        <div class="grid" style="margin-top:14px">
+          ${slot("signed_vrf","Signed &amp; stamped form","PDF or photo of the signed copy.")}
+        </div>
+      </fieldset>
+
+      <fieldset><legend>Supporting documents</legend>
+        <div class="grid">
+          ${india ? slot("gst_certificate","GST certificate","Optional but speeds up verification.") : ""}
+          ${india ? slot("pan_card","PAN card","Optional.") : ""}
+          ${slot("cancelled_cheque","Cancelled cheque","Optional. Confirms the bank account name.")}
+          ${slot("other","Any other document","Optional.")}
+        </div>
+      </fieldset>`;
+  }
+
+  app.innerHTML = `<div class="card">
+    <h2>Vendor Registration Form</h2>
+    <div class="sub">Fields marked <span class="req">*</span> are required.
+      Use <b>Save draft</b> at any point — you can close this and come back.</div>
+    <div class="steps">
+      <div class="${step===1?"on":step>1?"done":""}" data-step="1">1. Company details</div>
+      <div class="${step===2?"on":step>2?"done":""}" data-step="2">2. Statutory &amp; bank</div>
+      <div class="${step===3?"on":""}" data-step="3">3. Review &amp; submit</div>
+    </div>
+    ${body}
+    <div class="row">
+      ${step>1?'<button class="btn" id="back">Back</button>':""}
+      <span class="sp"></span>
+      <button class="btn" id="saveDraft">Save draft</button>
+      ${step<3?'<button class="btn pri" id="next">Continue</button>'
+              :'<button class="btn pri" id="submit">Submit registration</button>'}
+    </div>
+    <div class="note">Your account number is stored separately from the rest of
+      this form and is never shown back to you in full. Nobody at IKIO can see
+      it without that access being recorded against their name.</div>
+  </div>`;
+  bindVendorInputs();
+}
+
+function bindVendorInputs(){
+  const v = VENDOR;
+  document.querySelectorAll("[data-k]").forEach(el=>{
+    el.addEventListener("input", ()=>{
+      if(el.dataset.upper) el.value = el.value.toUpperCase();
+      const k = el.dataset.k;
+      if(el.dataset.bank) v.bank[k] = el.value; else v[k] = el.value;
+      el.closest("[data-wrap]").classList.remove("bad");
+      if(k === "country") renderVendor();
+    });
+    // On blur, not per keystroke — reformatting mid-word fights the typist.
+    el.addEventListener("blur", ()=>{
+      const k = el.dataset.k;
+      if(el.dataset.bank || !NAME_FIELDS.has(k)) return;
+      const tidied = tidyName(el.value);
+      if(tidied !== el.value){ el.value = tidied; v[k] = tidied; }
+    });
+  });
+  const a2 = document.getElementById("acct2");
+  if(a2) a2.addEventListener("input", ()=>{ a2.value = a2.value.toUpperCase();
+    a2.closest("[data-wrap]").classList.remove("bad"); });
+
+  document.querySelectorAll('input[name="msmed"]').forEach(r=>{
+    r.addEventListener("change", ()=>{
+      v.msmed_covered = r.value === "yes";
+      document.getElementById("msmedBox").style.display = v.msmed_covered ? "" : "none";
+    });
+  });
+  const mf = document.getElementById("msmedFile");
+  if(mf) mf.addEventListener("change", ()=>uploadDoc(mf, "msmed_certificate"));
+
+  // Every other upload slot on the review step.
+  document.querySelectorAll("[data-doc]").forEach(inp=>{
+    inp.addEventListener("change", ()=>uploadDoc(inp, inp.dataset.doc));
+  });
+
+  // Clickable step chips. Going back is always allowed; going forward
+  // saves and validates first, so you cannot skip past a bad field.
+  document.querySelectorAll("[data-step]").forEach(chip=>{
+    chip.style.cursor = "pointer";
+    chip.onclick = async ()=>{
+      const target = Number(chip.dataset.step);
+      if(target === step) return;
+      if(target < step){ syncFromDom(); await saveStep(true); step = target; return renderVendor(); }
+      while(step < target){ if(!await saveStep()) return; step++; }
+      renderVendor();
+    };
+  });
+
+  const on = (id,fn)=>{ const e=document.getElementById(id); if(e) e.onclick=fn; };
+  on("back", ()=>{ step--; renderVendor(); });
+  on("next", async ()=>{ if(await saveStep()){ step++; renderVendor(); } });
+  on("saveDraft", async ()=>{ if(await saveStep(true)) toast("Draft saved"); });
+  on("submit", confirmSubmit);
+  on("printForm", ()=>window.print());
+}
+
+async function uploadDoc(input, docType){
+  const f = input.files[0]; if(!f) return;
+  const hint = document.querySelector(`[data-dochint="${docType}"]`)
+            || document.getElementById("msmedHint");
+  if(hint) hint.textContent = "Uploading…";
+  // Path must start with the vendor id — the storage policies key off it.
+  const path = `${VENDOR.id}/${Date.now()}-${f.name.replace(/[^\w.\-]/g,"_")}`;
+  const { error:upErr } = await sb.storage.from("vendor-docs").upload(path, f);
+  if(upErr){ if(hint) hint.textContent = "Upload failed."; return fail(upErr); }
+  const { error:metaErr } = await sb.from("vendor_documents")
+    .insert({ vendor_id:VENDOR.id, doc_type:docType, storage_path:path, file_name:f.name });
+  if(metaErr){ if(hint) hint.textContent = "Upload failed."; return fail(metaErr); }
+  VENDOR.docs = (VENDOR.docs||[]).filter(d=>d.doc_type !== docType);
+  VENDOR.docs.push({ doc_type:docType, file_name:f.name });
+  if(hint) hint.textContent = "Attached: " + f.name;
+  toast("Certificate uploaded");
+}
+
+function markBad(key){
+  const w = document.querySelector(`[data-wrap="${key}"]`);
+  if(w){ w.classList.add("bad"); w.scrollIntoView({behavior:"smooth",block:"center"}); }
+  return false;
+}
+
+function validateStep(){
+  const v = VENDOR, india = isIndia(v);
+  if(step === 1){
+    for(const k of ["company_name","region","address1","city","pin_code","payment_terms",
+                    "nature_of_work","mobile_no","contact_sales","email_sales",
+                    "contact_finance","email_finance"])
+      if(!String(v[k]||"").trim()) return markBad(k);
+    for(const k of ["email_sales","email_finance"])
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v[k])) return markBad(k);
+    return true;
+  }
+  if(step === 2){
+    if(india){
+      if(!RX.pan_no.test(v.pan_no||"")) return markBad("pan_no");
+      if(v.tan_no && !RX.tan_no.test(v.tan_no)) return markBad("tan_no");
+      if(!RX.gstin_no.test(v.gstin_no||"")) return markBad("gstin_no");
+      if(v.msmed_covered === null || v.msmed_covered === undefined){
+        toast("Please answer the MSMED question"); return false; }
+    }
+    const b = v.bank;
+    const anyBank = b.account_number || b.beneficiary_name || b.bank_name_addr;
+    if(!anyBank && BANK_MASK) return true;   // already on file, not re-entering
+    if(!String(b.beneficiary_name||"").trim()) return markBad("beneficiary_name");
+    if(!String(b.bank_name_addr||"").trim()) return markBad("bank_name_addr");
+    if(!RX.account_number.test(b.account_number||"")) return markBad("account_number");
+    const a2 = document.getElementById("acct2");
+    if(a2 && a2.value !== b.account_number) return markBad("acct2");
+    if(india && !RX.ifsc_code.test(b.ifsc_code||"")) return markBad("ifsc_code");
+    if(!india && !RX.swift_code.test(b.swift_code||"")) return markBad("swift_code");
+    return true;
+  }
+  return true;
+}
+
+/* Read every visible field straight from the DOM before saving.
+   Without this, a <select> the user never touched keeps its model value
+   of null while visibly showing its first option — so Country looked
+   like "India" but saved as empty, which both failed the completeness
+   check and made an Indian vendor render as overseas. Relying on input
+   events means untouched fields are invisible to the save. */
+/* Tidy-up on leaving a field.
+
+   Applied to people and place names only. Deliberately NOT applied to
+   Beneficiary Name: that must match what the bank holds character for
+   character, and "correcting" it is how a payment gets rejected. Company
+   names are excluded too — IKIO, LLP, 3M and Pvt Ltd all lose meaning
+   when title-cased.
+
+   It only acts when the text is entirely lower or entirely upper case,
+   i.e. when the person clearly did not format it themselves. Anything
+   with deliberate internal capitals — McDonald, van der Berg, DeSouza —
+   is left exactly as typed, because a name is someone's identity and
+   guessing at it is worse than leaving it alone. */
+const NAME_FIELDS = new Set(["contact_sales","contact_finance","city"]);
+
+function titleCase(s){
+  return s.replace(/[A-Za-zÀ-ɏ]+(?:['’\-][A-Za-zÀ-ɏ]+)*/g, w =>
+    w.replace(/(^|['’\-])([a-zà-ɏ])/g,
+      (m,sep,ch)=> sep + ch.toUpperCase())
+     .replace(/(?<=[A-Za-z])[A-Z]/g, c => c.toLowerCase())
+  );
+}
+
+function tidyName(raw){
+  const s = raw.replace(/\s+/g," ").trim();
+  if(!s) return s;
+  const allLower = s === s.toLowerCase();
+  const allUpper = s === s.toUpperCase();
+  if(!allLower && !allUpper) return s;      // deliberately capitalised — leave it
+  return titleCase(s.toLowerCase());
+}
+
+function syncFromDom(){
+  const v = VENDOR;
+  document.querySelectorAll("[data-k]").forEach(el=>{
+    const k = el.dataset.k;
+    if(el.dataset.bank) v.bank[k] = el.value; else v[k] = el.value;
+  });
+  const msmed = document.querySelector('input[name="msmed"]:checked');
+  if(msmed) v.msmed_covered = msmed.value === "yes";
+}
+
+/* Each step saves only the fields it owns. Saving everything meant a
+   half-typed PAN left over from step 2 was re-sent while you were on
+   step 1, and the database rejected the whole save with a raw constraint
+   error about a field that was not even on screen. */
+const STEP_COLS = {
+  1: ["company_name","country","region","address1","address2","address3",
+      "city","pin_code","payment_terms","order_currency","inco_terms",
+      "telephone_no","mobile_no","fax_no","contact_sales","email_sales",
+      "contact_finance","email_finance","nature_of_work"],
+  2: ["pan_no","tan_no","gstin_no","msmed_covered"],
+  3: []
+};
+
+async function saveStep(silentValidate){
+  syncFromDom();
+  if(!validateStep()) return false;
+  const v = VENDOR;
+
+  const cols = STEP_COLS[step] || [];
+  const patch = {};
+  for(const c of cols) patch[c] = (v[c] === "" ? null : v[c]);
+
+  // An overseas vendor has no PAN, TAN or GSTIN. If the country was changed
+  // after those were typed, clear them rather than carrying dead values.
+  if(step === 2 && !isIndia(v)){
+    patch.pan_no = null; patch.tan_no = null;
+    patch.gstin_no = null; patch.msmed_covered = null;
+  }
+
+  if(Object.keys(patch).length){
+    const { error } = await sb.from("vendors").update(patch).eq("id", v.id);
+    if(error){ fail(error); return false; }
+  }
+
+  const b = v.bank;
+  if(step === 2 && (b.account_number || b.beneficiary_name || b.bank_name_addr)){
+    // Never a direct table write. Nobody holds privileges on
+    // vendor_bank_details; this function is the only way in.
+    const { error:bErr } = await sb.rpc("save_bank_details", {
+      p_beneficiary_name: b.beneficiary_name || null,
+      p_bank_name_addr:   b.bank_name_addr   || null,
+      p_account_number:   b.account_number   || null,
+      p_ifsc_code:        b.ifsc_code        || null,
+      p_swift_code:       b.swift_code       || null
+    });
+    if(bErr){ fail(bErr); return false; }
+    const { data:mask } = await sb.rpc("get_my_bank_last4");
+    BANK_MASK = (mask && mask[0]) || null;
+  }
+  return true;
+}
+
+function confirmSubmit(){
+  showDialog(`<h2>Submit registration?</h2>
+    <p class="sub" style="margin:10px 0 18px">Once submitted,
+      <b>${esc(VENDOR.company_name||"this registration")}</b> becomes read-only.
+      IKIO will review it and can send it back if a correction is needed.</p>
+    <div class="row" style="margin:0"><span class="sp"></span>
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn pri" id="doSubmit">Yes, submit</button></div>`, ()=>{
+    document.getElementById("doSubmit").onclick = async ()=>{
+      const btn = document.getElementById("doSubmit");
+      btn.disabled = true; btn.textContent = "Submitting…";
+      if(!await saveStep()){ document.getElementById("dlg").close(); return; }
+      const { error } = await sb.rpc("submit_registration");
+      document.getElementById("dlg").close();
+      if(error) return fail(error);
+      toast("Submitted — IKIO have been notified");
+      await startVendor();
+    };
+  });
+}
+
+function renderVendorSubmitted(v){
+  const m = {
+    submitted:["b-info","Submitted — under review. We will be in touch if anything is needed."],
+    checked:["b-warn","Checked by our team, awaiting final approval."],
+    approved:["b-ok","Approved. You are now registered as a vendor."],
+    rejected:["b-bad","Rejected. Please see the remarks below."]
+  }[v.status] || ["b-info",""];
+  app.innerHTML = `<div class="card">
+    <h2>Your registration</h2>
+    <div class="sub">${esc(v.company_name||"")}</div>
+    <div class="banner ${m[0]}">${esc(m[1])}</div>
+    ${v.remarks?`<div class="banner b-warn"><b>Remarks from IKIO:</b> ${esc(v.remarks)}</div>`:""}
+    ${summaryHTML(v, vendorBankView())}
+    <div class="note">Your bank account number is shown masked and is stored
+      apart from the rest of this form. To change it after approval, contact
+      IKIO directly — bank details cannot be changed through this portal, which
+      is what protects you from someone redirecting your payments.</div>
+  </div>`;
+}
+
+/* The vendor never sees their own account number in full — only what they
+   typed this session, or the masked value the database hands back. */
+function vendorBankView(){
+  const b = VENDOR.bank || {};
+  return {
+    beneficiary_name: b.beneficiary_name,
+    bank_name_addr: b.bank_name_addr,
+    ifsc_code: b.ifsc_code || (BANK_MASK && BANK_MASK.ifsc_code),
+    swift_code: b.swift_code,
+    accountText: b.account_number ? "••••" + String(b.account_number).slice(-4)
+               : (BANK_MASK && BANK_MASK.masked) || "—"
+  };
+}
+
+/* bankView: { beneficiary_name, bank_name_addr, ifsc_code, swift_code,
+   accountText } — accountText is already either masked or full, decided by
+   the caller. Nothing in here un-masks anything on its own. */
+function summaryHTML(v, bankView){
+  const india = isIndia(v);
+  const rows = [
+    ["Company Name", v.company_name],
+    ["Address", [v.address1,v.address2,v.address3].filter(Boolean).join(", ")],
+    ["City", v.city], ["State / Province", v.region], ["PIN / Post code", v.pin_code],
+    ["Country", v.country],
+    ["Payment Terms", v.payment_terms], ["Order Currency", v.order_currency],
+    ["INCO Terms", v.inco_terms],
+    ["Telephone / Mobile", `${v.telephone_no||"—"} / ${v.mobile_no||"—"}`],
+    ["FAX No.", v.fax_no],
+    ["Contact — Sales", `${v.contact_sales||"—"} · ${v.email_sales||"—"}`],
+    ["Contact — Finance", `${v.contact_finance||"—"} · ${v.email_finance||"—"}`],
+    ["Nature of Work", v.nature_of_work]
+  ];
+  if(india) rows.push(["PAN No.", v.pan_no], ["TAN No.", v.tan_no],
+    ["GSTIN No.", v.gstin_no],
+    ["Covered under MSMED Act", v.msmed_covered==null?"—":(v.msmed_covered?"Yes":"No")]);
+  if((v.docs||[]).length)
+    rows.push(["Attached documents",
+      v.docs.map(d=>`${d.file_name||d.doc_type}`).join(", ")]);
+
+  const b = bankView || {};
+  const bank = [
+    ["Beneficiary Name", b.beneficiary_name],
+    ["Bank Name &amp; Address", b.bank_name_addr],
+    ["Bank A/c No.", `<span class="mono">${esc(b.accountText || "—")}</span>`],
+    india ? ["Bank IFSC Code", b.ifsc_code] : ["SWIFT Code", b.swift_code]
+  ];
+  const dl = a => `<dl class="kv">`+a.map(([k,val])=>
+    `<dt>${k}</dt><dd>${val && String(val).startsWith("<") ? val : esc(val||"—")}</dd>`).join("")+`</dl>`;
+  return `<img class="printlogo" src="logo.png" alt="IKIO" onerror="this.remove()">
+          <fieldset><legend>Company</legend>${dl(rows)}</fieldset>
+          <fieldset><legend>Bank detail</legend>${dl(bank)}
+            <div class="sign">Vendor's signature &amp; stamp</div></fieldset>`;
+}
+
+/* ================= staff ================= */
+
+let staffTab = "queue", openId = null, revealCache = {};
+
+async function renderStaff(){
+  app.innerHTML = `<div class="card">
+    <div class="tabs">
+      <button class="${staffTab==="queue"?"on":""}" data-tab="queue">Registrations</button>
+      <button class="${staffTab==="invite"?"on":""}" data-tab="invite">Invite</button>
+      <button class="${staffTab==="invitations"?"on":""}" data-tab="invitations">Invitations</button>
+      <button class="${staffTab==="audit"?"on":""}" data-tab="audit">Access log</button>
+      ${ME.isApprover ? `<button class="${staffTab==="staff"?"on":""}" data-tab="staff">Staff</button>` : ""}
+    </div>
+    <div id="tabBody"><span class="spin"></span>Loading…</div>
+  </div>`;
+  document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{
+    staffTab = b.dataset.tab; openId = null; renderStaff(); });
+
+  if(staffTab === "queue") return openId ? renderDetail() : renderQueue();
+  if(staffTab === "invite") return renderInvite();
+  if(staffTab === "invitations") return renderInvitationLists();
+  if(staffTab === "staff") return renderStaffAdmin();
+  return renderAudit();
+}
+
+/* Sits below the vendor invite on the same tab. Approvers only — being
+   able to hand out access is itself the most powerful privilege here. */
+async function renderColleagueInvite(body){
+  const box = document.createElement("div");
+  box.style.cssText = "margin-top:28px;padding-top:22px;border-top:1px solid var(--line)";
+  box.innerHTML = `<h2>Invite a colleague</h2>
+    <div class="sub">Give someone at IKIO access to this portal. They receive a
+      sign-in link, and their access is waiting when they arrive — no account
+      needed beforehand.</div>
+    <div class="grid">
+      <div class="c3"><label>Work e-mail <span class="req">*</span></label>
+        <input id="clEmail" placeholder="colleague@ikio.com"></div>
+      <div class="c2"><label>Access <span class="req">*</span></label>
+        <select id="clRole">
+          <option value="viewer">View only</option>
+          <option value="checker">Checker — can review and check</option>
+          <option value="approver">Approver — full access</option>
+        </select></div>
+      <div class="c2" style="display:flex;align-items:flex-start">
+        <button class="btn pri" id="clSend" style="margin-top:22px">Invite colleague</button></div>
+    </div>
+    <div class="note"><b>View only</b> can see every registration and its
+      progress, but cannot check, approve, reject, or reveal a bank account.
+      It is the safe default for someone who just needs visibility. You can
+      raise them to checker later by inviting the same address again.</div>`;
+  body.appendChild(box);
+
+  box.querySelector("#clSend").onclick = async ()=>{
+    const email = box.querySelector("#clEmail").value.trim().toLowerCase();
+    const role  = box.querySelector("#clRole").value;
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast("Enter a valid e-mail address");
+
+    const go = async ()=>{
+      const btn = box.querySelector("#clSend");
+      btn.disabled = true; btn.textContent = "Inviting…";
+      const { error:e } = await sb.rpc("invite_staff", { p_email:email, p_role:role });
+      if(e){ btn.disabled=false; btn.textContent="Invite colleague"; return fail(e); }
+      const mailErr = await emailSignInLink(email);
+      btn.disabled = false; btn.textContent = "Invite colleague";
+      toast(mailErr
+        ? "Access granted, but the e-mail failed: " + (mailErr.message||"unknown")
+        : "Invited " + email + " — sign-in link sent", mailErr ? 7000 : 5000);
+      box.querySelector("#clEmail").value = "";
+    };
+
+    if(role === "approver"){
+      showDialog(`<h2>Give full approver access?</h2>
+        <div class="sub" style="margin:10px 0 16px"><b>${esc(email)}</b> will see
+          every registration, reveal bank details, give final approval, and
+          invite other colleagues.</div>
+        <div class="row" style="margin:0"><span class="sp"></span>
+          <button class="btn" data-close>Cancel</button>
+          <button class="btn pri" id="okCl">Yes, invite as approver</button></div>`, ()=>{
+        document.getElementById("okCl").onclick = ()=>{
+          document.getElementById("dlg").close(); go(); };
+      });
+    } else { go(); }
+  };
+}
+
+async function renderStaffAdmin(){
+  const body = document.getElementById("tabBody");
+  const { data, error } = await sb.rpc("list_staff_detail");
+  if(error){ body.innerHTML = `<div class="banner b-bad">${esc(error.message)}</div>`; return; }
+
+  body.innerHTML = `<h2>Internal staff</h2>
+    <div class="sub">Who can see and act on vendor registrations. A
+      <b>checker</b> reviews the vendors allocated to them; an
+      <b>approver</b> sees every registration and gives final sign-off.</div>
+
+    <div class="grid">
+      <div class="c3"><label>Work e-mail <span class="req">*</span></label>
+        <input id="stEmail" placeholder="colleague@ikio.com">
+        <div class="hint">They must have opened the portal and signed in once,
+          otherwise there is no account to attach a role to.</div></div>
+      <div class="c2"><label>Role <span class="req">*</span></label>
+        <select id="stRole">
+          <option value="checker">Checker</option>
+          <option value="approver">Approver</option>
+        </select></div>
+      <div class="c2" style="display:flex;align-items:flex-start">
+        <button class="btn pri" id="stGrant" style="margin-top:22px">Grant access</button></div>
+    </div>
+    <div class="note">You cannot change your own role — a second approver has
+      to do it. That keeps every change attributable to someone other than the
+      person it benefits, and it is why the last approver cannot be removed.</div>
+
+    <table style="margin-top:20px"><thead><tr>
+      <th>E-mail</th><th>Role</th><th>Since</th><th></th></tr></thead><tbody>
+      ${(data||[]).map(s=>`<tr>
+        <td class="mono" style="font-size:13px">${esc(s.email)}${
+          s.is_you ? ` <span class="pill p-submitted">you</span>` : ""}</td>
+        <td><span class="pill ${s.role==="approver"?"p-approved":"p-checked"}">${esc(s.role)}</span></td>
+        <td>${fmtDate(s.granted_at)}</td>
+        <td>${s.is_you ? "" :
+          `<button class="btn danger" style="font-size:12px;padding:5px 10px"
+             data-revoke="${esc(s.email)}">Remove access</button>`}</td>
+      </tr>`).join("")}
+    </tbody></table>`;
+
+  document.getElementById("stGrant").onclick = async ()=>{
+    const email = document.getElementById("stEmail").value.trim().toLowerCase();
+    const role  = document.getElementById("stRole").value;
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast("Enter a valid e-mail address");
+
+    const go = async ()=>{
+      const { error:e } = await sb.rpc("grant_staff_role", { p_email:email, p_role:role });
+      if(e) return fail(e);
+      toast(email + " is now " + (role === "approver" ? "an approver" : "a checker"));
+      renderStaff();
+    };
+    if(role === "approver"){
+      showDialog(`<h2>Make this person an approver?</h2>
+        <div class="sub" style="margin:10px 0 16px"><b>${esc(email)}</b> will see
+          <b>every</b> vendor registration, not only those allocated to them, and
+          will be able to give final approval and grant access to others.</div>
+        <div class="row" style="margin:0"><span class="sp"></span>
+          <button class="btn" data-close>Cancel</button>
+          <button class="btn pri" id="okGrant">Yes, make approver</button></div>`, ()=>{
+        document.getElementById("okGrant").onclick = ()=>{
+          document.getElementById("dlg").close(); go();
+        };
+      });
+    } else { go(); }
+  };
+
+  body.querySelectorAll("[data-revoke]").forEach(b=>{
+    b.onclick = ()=>{
+      showDialog(`<h2>Remove access?</h2>
+        <div class="sub" style="margin:10px 0 16px"><b>${esc(b.dataset.revoke)}</b>
+          will keep their account but stop being internal staff. Any vendors
+          allocated to them stay allocated — reassign those first if someone
+          else should own them.</div>
+        <div class="row" style="margin:0"><span class="sp"></span>
+          <button class="btn" data-close>Cancel</button>
+          <button class="btn danger" id="okRev">Remove access</button></div>`, ()=>{
+        document.getElementById("okRev").onclick = async ()=>{
+          const { error:e } = await sb.rpc("revoke_staff_role", { p_email:b.dataset.revoke });
+          document.getElementById("dlg").close();
+          if(e) return fail(e);
+          toast("Access removed"); renderStaff();
+        };
+      });
+    };
+  });
+}
+
+async function renderQueue(){
+  const { data, error } = await sb.from("vendor_overview")
+    .select("*").neq("status","draft").order("submitted_at",{ascending:false});
+  const body = document.getElementById("tabBody");
+  if(error){ body.innerHTML = `<div class="banner b-bad">${esc(error.message)}</div>`; return; }
+
+  body.innerHTML = `<h2>Vendor registrations</h2>
+    <div class="sub">${ME.isApprover
+      ? "As approver you see every registration."
+      : "You see only the vendors allocated to you."}
+      Bank details are never in this list — open one and reveal, which is recorded.</div>
+    ${data.length ? `<table><thead><tr><th>Company</th><th>Country</th><th>GSTIN</th>
+      <th>Status</th><th>Submitted</th></tr></thead><tbody>
+      ${data.map(v=>`<tr data-id="${v.id}">
+        <td><b>${esc(v.company_name)}</b><div style="font-size:12px;color:var(--muted)">${esc(v.nature_of_work||"")}</div></td>
+        <td>${esc(v.country)}</td><td class="mono">${esc(v.gstin_no||"—")}</td>
+        <td><span class="pill p-${v.status}">${v.status}</span></td>
+        <td>${fmtDate(v.submitted_at)}</td></tr>`).join("")}
+      </tbody></table>`
+      : `<div class="banner b-info">Nothing to review yet. Invite a vendor from
+         the Invitations tab, and their submission will appear here.</div>`}`;
+
+  body.querySelectorAll("tr[data-id]").forEach(tr=>
+    tr.onclick = ()=>{ openId = tr.dataset.id; renderStaff(); });
+}
+
+async function renderDetail(){
+  const body = document.getElementById("tabBody");
+  const { data, error } = await sb.from("vendor_overview").select("*").eq("id",openId).single();
+  if(error){ body.innerHTML = `<div class="banner b-bad">${esc(error.message)}</div>`; return; }
+  const v = data;
+  const full = revealCache[v.id] || null;
+
+  const canCheck = !ME.isApprover && !ME.isViewer && v.status==="submitted";
+  const canApprove = ME.isApprover && v.status==="checked";
+
+  let why = "";
+  if(ME.isApprover && v.status==="submitted")
+    why = `<div class="banner b-warn">This must be checked by its allocated owner
+           before it can be approved.</div>`;
+  if(!ME.isApprover && v.status==="checked")
+    why = `<div class="banner b-info">Already checked — approval is an approver's step.</div>`;
+
+  body.innerHTML = `<div class="row" style="margin:0 0 16px">
+      <button class="btn" id="back">← All registrations</button>
+      <span class="sp"></span><span class="pill p-${v.status}">${v.status}</span></div>
+    <h2>${esc(v.company_name)}</h2>
+    <div class="sub">${esc(v.city||"")}, ${esc(v.country||"")} · submitted ${fmtDate(v.submitted_at)}</div>
+    ${why}
+    ${v.remarks?`<div class="banner b-warn"><b>Remarks:</b> ${esc(v.remarks)}</div>`:""}
+    ${summaryHTML(v, full
+        ? { beneficiary_name:full.beneficiary_name, bank_name_addr:full.bank_name_addr,
+            ifsc_code:full.ifsc_code, swift_code:full.swift_code,
+            accountText:full.account_number }
+        : { accountText: v.account_masked || "—" })}
+    <div class="row" style="margin-top:0">
+      ${ME.isViewer
+        ? `<span class="pill p-draft">View-only access — bank details are not available</span>`
+        : full ? `<span class="pill p-submitted">Bank details revealed — logged against your name</span>`
+               : `<button class="btn" id="reveal" ${v.has_bank_details?"":"disabled"}>Reveal bank details</button>`}
+    </div>
+    <fieldset style="margin-top:18px"><legend>Sign-off</legend><dl class="kv">
+      <dt>Checked</dt><dd>${v.checked_at?fmtDate(v.checked_at):"—"}</dd>
+      <dt>Approved</dt><dd>${v.approved_at?fmtDate(v.approved_at):"—"}</dd>
+    </dl></fieldset>
+    ${ME.isViewer ? "" : `<div class="row">
+      <button class="btn danger" id="reopen">Send back for correction</button>
+      <button class="btn danger" id="reject">Reject</button>
+      <span class="sp"></span>
+      <button class="btn pri" id="check" ${canCheck?"":"disabled"}>Mark as checked</button>
+      <button class="btn pri" id="approve" ${canApprove?"":"disabled"}>Approve</button>
+    </div>`}
+    <div class="note">These buttons mirror rules held in the database. If a rule
+      is broken the database refuses and the reason appears here — the button
+      state is a convenience, not the control.</div>`;
+
+  const on=(id,fn)=>{const e=document.getElementById(id); if(e&&!e.disabled) e.onclick=fn;};
+  on("back", ()=>{ openId=null; renderStaff(); });
+  on("reveal", async ()=>{
+    const { data:d, error:e } = await sb.rpc("staff_reveal_bank_details",{ p_vendor_id:v.id });
+    if(e) return fail(e);
+    revealCache[v.id] = (d && d[0]) || {};
+    toast("Revealed — recorded in the access log");
+    renderStaff();
+  });
+  const act = (title, action, needRemark) => askRemarks(title, async r=>{
+    const { error:e } = await sb.rpc("advance_status",
+      { p_vendor_id:v.id, p_action:action, p_remarks:r || null });
+    if(e) return fail(e);
+    toast(title + " — done"); openId = null; renderStaff();
+  }, needRemark);
+  on("check",   ()=>act("Mark as checked","check",false));
+  on("approve", ()=>act("Approve","approve",false));
+  on("reject",  ()=>act("Reject","reject",true));
+  on("reopen",  ()=>act("Send back for correction","reopen",true));
+}
+
+function askRemarks(title, cb, required){
+  showDialog(`<h2>${esc(title)}</h2>
+    <div class="sub" style="margin:8px 0 14px">${required
+      ? "A remark is required so the vendor knows what to fix."
+      : "Remarks are optional."}</div>
+    <textarea id="rem" placeholder="Remarks"></textarea>
+    <div class="row" style="margin-top:16px"><span class="sp"></span>
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn pri" id="ok">${esc(title)}</button></div>`, ()=>{
+    document.getElementById("ok").onclick = async ()=>{
+      const r = document.getElementById("rem").value.trim();
+      if(required && !r) return toast("Please add a remark");
+      document.getElementById("dlg").close();
+      await cb(r);
+    };
+  });
+}
+
+async function renderInvite(){
+  const body = document.getElementById("tabBody");
+  const [{ data:invs, error }, { data:staff }] = await Promise.all([
+    sb.from("vendor_invitations").select("*").order("invited_at",{ascending:false}),
+    sb.rpc("list_staff")
+  ]);
+  const staffList = staff || [{ id:ME.staffId, label:ME.email }];
+
+  body.innerHTML = `<h2>Invite a vendor</h2>
+    <div class="sub">Vendors never sign themselves up. Invite a known supplier
+      and allocate an owner at the same time, so a submission can never arrive
+      without someone responsible for it.</div>
+    <div class="grid">
+      <div><label>Vendor name <span class="req">*</span></label>
+        <input id="invName" placeholder="e.g. Trisha Castings Pvt Ltd"></div>
+      <div><label>Vendor e-mail <span class="req">*</span></label>
+        <input id="invEmail" placeholder="accounts@vendor.example">
+        <div class="hint">Use the Finance &amp; Accounts address, not a salesperson's.</div></div>
+      <div><label>Allocate to <span class="req">*</span></label>
+        <select id="invStaff">${staffList.map(s=>
+          `<option value="${esc(s.id)}" ${s.id===ME.staffId?"selected":""}>${esc(s.label)}</option>`).join("")}</select></div>
+      <div style="display:flex;align-items:flex-end">
+        <button class="btn pri" id="sendInv">Create &amp; send invitation</button></div>
+    </div>
+    ${onLocalhost() && !(window.PORTAL_URL||"").trim() ? `<div class="banner b-warn"
+      style="margin-top:14px">This portal is running on localhost, so any link
+      you e-mail points at <b>${esc(location.origin)}</b> — which only opens on
+      this computer. Fine for testing here; before inviting anyone else, deploy
+      and set <span class="mono">PORTAL_URL</span> in config.js.</div>` : ""}
+    <div class="note">This records the invitation, allocates an owner, and
+      e-mails the vendor a one-time sign-in link. The link expires well before
+      the invitation does — use <b>Resend link</b> if they need another. The
+      link is never itself the login: it signs them in, and the portal then
+      matches their address to this invitation.</div>
+    <div class="note" style="margin-top:14px">Everything you have invited,
+      vendors and colleagues alike, is on the <b>Invitations</b> tab — with
+      resend, copy and remove for each.</div>`;
+
+  if(ME.isApprover) renderColleagueInvite(body);
+
+  document.getElementById("sendInv").onclick = async ()=>{
+    const name = document.getElementById("invName").value.trim();
+    const email = document.getElementById("invEmail").value.trim().toLowerCase();
+    const staffId = document.getElementById("invStaff").value;
+    if(!name) return toast("Vendor name is required");
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast("Enter a valid e-mail address");
+    const btn = document.getElementById("sendInv");
+    btn.disabled = true; btn.textContent = "Creating…";
+    const { error:e } = await sb.rpc("create_invitation",
+      { p_vendor_name:name, p_vendor_email:email, p_allocated_staff_id:staffId });
+    if(e){ btn.disabled=false; btn.textContent="Create & send invitation"; return fail(e); }
+
+    btn.textContent = "Sending e-mail…";
+    const mailErr = await emailSignInLink(email);
+    btn.disabled = false; btn.textContent = "Create & send invitation";
+    if(mailErr){
+      toast("Invitation saved, but the e-mail failed: " + (mailErr.message||"unknown")
+            + " — use Copy text on the Invitations tab.", 7000);
+    } else {
+      toast("Invitation created and sign-in link e-mailed to " + email, 5000);
+    }
+    document.getElementById("invName").value = "";
+    document.getElementById("invEmail").value = "";
+  };
+}
+
+/* Both invitation lists, on their own tab. Kept apart from the forms so the
+   page you use to check on things is not the page you use to create them. */
+async function renderInvitationLists(){
+  const body = document.getElementById("tabBody");
+  const [vres, sres] = await Promise.all([
+    sb.from("vendor_invitations").select("*").order("invited_at",{ascending:false}),
+    ME.isApprover ? sb.rpc("list_staff_invitations") : Promise.resolve({data:[],error:null})
+  ]);
+  const invs = vres.data, error = vres.error;
+  const staffInvs = sres.data, staffErr = sres.error;
+
+  body.innerHTML = `<h2>Vendor invitations</h2>
+    <div class="sub">Suppliers who have been invited to register.
+      <b>Pending</b> means they have not signed in yet; <b>registered</b> means
+      they have.</div>
+    ${error ? `<div class="banner b-bad">${esc(error.message)}${esc(errDetail(error))}</div>`
+    : !(invs||[]).length ? `<div class="banner b-info">No vendor invitations yet.
+        Create one on the <b>Invite</b> tab.</div>` : `
+    <table><thead><tr><th>Vendor</th><th>E-mail</th><th>Status</th>
+      <th>Invited</th><th>Expires</th><th></th></tr></thead><tbody>
+      ${invs.map(i=>`<tr>
+        <td><b>${esc(i.vendor_name)}</b></td>
+        <td class="mono" style="font-size:12.5px">${esc(i.vendor_email)}</td>
+        <td><span class="pill p-${i.status}">${esc(i.status)}</span></td>
+        <td>${fmtDate(i.invited_at)}</td><td>${fmtDate(i.expires_at)}</td>
+        <td style="white-space:nowrap">
+          <button class="btn" style="font-size:12px;padding:5px 10px"
+              data-resend="${esc(i.vendor_email)}">Resend link</button>
+          <button class="btn" style="font-size:12px;padding:5px 10px"
+              data-copy="${esc(i.vendor_email)}" data-name="${esc(i.vendor_name)}"
+              >Copy text</button>
+          <button class="btn danger" style="font-size:12px;padding:5px 10px"
+              data-del="${esc(i.id)}" data-delname="${esc(i.vendor_name)}"
+              data-delmail="${esc(i.vendor_email)}"
+              data-delstatus="${esc(i.status)}">Delete</button>
+          </td></tr>`).join("")}
+    </tbody></table>`}
+
+    ${!ME.isApprover ? "" : `
+    <h2 style="margin-top:28px">Colleague invitations</h2>
+    <div class="sub">People at IKIO given access to this portal.</div>
+    ${staffErr ? `<div class="banner b-bad">${esc(staffErr.message)}${esc(errDetail(staffErr))}</div>`
+    : !(staffInvs||[]).length ? `<div class="banner b-info">No colleagues invited yet.</div>` : `
+    <table><thead><tr><th>E-mail</th><th>Access</th><th>Invited</th>
+      <th>Status</th><th></th></tr></thead><tbody>
+      ${staffInvs.map(i=>`<tr>
+        <td class="mono" style="font-size:12.5px">${esc(i.email)}</td>
+        <td><span class="pill ${i.role==="approver"?"p-approved":i.role==="checker"?"p-checked":"p-draft"}">${esc(i.role)}</span></td>
+        <td>${fmtDate(i.invited_at)}</td>
+        <td>${i.claimed_at ? `<span class="pill p-approved">active</span>`
+                           : `<span class="pill p-submitted">pending</span>`}</td>
+        <td style="white-space:nowrap">
+          <button class="btn" style="font-size:12px;padding:5px 10px"
+            data-clresend="${esc(i.email)}">Resend link</button>
+          <button class="btn danger" style="font-size:12px;padding:5px 10px"
+            data-cldel="${esc(i.id)}" data-clmail="${esc(i.email)}">Remove</button>
+        </td></tr>`).join("")}
+    </tbody></table>`}`}`;
+
+  bindInvitationActions(body);
+}
+
+function bindInvitationActions(body){
+  body.querySelectorAll("[data-clresend]").forEach(b=>{
+    b.onclick = async ()=>{
+      b.disabled = true; b.textContent = "Sending…";
+      const err = await emailSignInLink(b.dataset.clresend);
+      b.disabled = false; b.textContent = "Resend link";
+      if(err) return fail(err);
+      toast("Sign-in link sent to " + b.dataset.clresend);
+    };
+  });
+
+  body.querySelectorAll("[data-cldel]").forEach(b=>{
+    b.onclick = async ()=>{
+      const { error:e } = await sb.rpc("delete_staff_invitation", { p_id:b.dataset.cldel });
+      if(e) return fail(e);
+      toast("Invitation removed for " + b.dataset.clmail);
+      renderStaff();
+    };
+  });
+
+  body.querySelectorAll("[data-del]").forEach(b=>{
+    b.onclick = ()=>{
+      const claimed = b.dataset.delstatus === "registered";
+      showDialog(`<h2>Delete this invitation?</h2>
+        <div class="sub" style="margin:10px 0 16px">
+          <b>${esc(b.dataset.delname)}</b> — ${esc(b.dataset.delmail)}<br>
+          The address becomes free to invite again.</div>
+        ${claimed ? `<div class="banner b-warn">This invitation was already
+          claimed. Deleting it does not remove the vendor's account or any
+          registration they have started — only the invitation record.</div>` : ""}
+        <div class="row" style="margin:0"><span class="sp"></span>
+          <button class="btn" data-close>Cancel</button>
+          <button class="btn danger" id="okDel">Delete invitation</button></div>`, ()=>{
+        document.getElementById("okDel").onclick = async ()=>{
+          const { error:e } = await sb.rpc("delete_invitation",
+            { p_invitation_id: b.dataset.del });
+          document.getElementById("dlg").close();
+          if(e) return fail(e);
+          toast("Invitation deleted — " + b.dataset.delmail + " can be invited again");
+          renderStaff();
+        };
+      });
+    };
+  });
+
+  body.querySelectorAll("[data-resend]").forEach(b=>{
+    b.onclick = async ()=>{
+      b.disabled = true; b.textContent = "Sending…";
+      const err = await emailSignInLink(b.dataset.resend);
+      b.disabled = false; b.textContent = "Resend link";
+      if(err) return fail(err);
+      toast("New sign-in link sent to " + b.dataset.resend);
+    };
+  });
+
+  // Fallback for when mail is refused or the recipient never receives it:
+  // staff send the portal link from their own mailbox instead.
+  body.querySelectorAll("[data-copy]").forEach(b=>{
+    b.onclick = async ()=>{
+      const url = location.href.split("#")[0];
+      const msg =
+`Dear ${b.dataset.name},
+
+Please complete your vendor registration for IKIO Solutions Private Limited
+using the portal below.
+
+  ${url}
+
+Enter this e-mail address when prompted: ${b.dataset.copy}
+You will receive a one-time sign-in link by e-mail.
+
+Regards,
+${ME.email}`;
+      try{
+        await navigator.clipboard.writeText(msg);
+        toast("Invitation text copied — paste it into your e-mail client");
+      }catch(e){ fail(new Error("Could not copy. Select the text manually.")); }
+    };
+  });
+}
+
+async function renderAudit(){
+  const body = document.getElementById("tabBody");
+  const { data, error } = await sb.from("audit_log")
+    .select("*").order("at",{ascending:false}).limit(200);
+  if(error){ body.innerHTML = `<div class="banner b-bad">${esc(error.message)}</div>`; return; }
+  body.innerHTML = `<h2>Access log</h2>
+    <div class="sub">Append-only. Every reveal of a bank account and every
+      status change is recorded against a named person, and cannot be edited
+      or deleted through this application.</div>
+    <table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th>
+    </tr></thead><tbody>
+    ${(data||[]).map(a=>`<tr>
+      <td>${fmtDate(a.at)}</td><td>${esc(a.actor_email||"—")}</td>
+      <td><span class="mono">${esc(a.action)}</span></td>
+      <td style="color:var(--muted)">${esc(a.detail?JSON.stringify(a.detail):"—")}</td>
+    </tr>`).join("")}</tbody></table>`;
+}
+
+boot().catch(e=>{
+  app.innerHTML = `<div class="center"><div class="card">
+    <h2>Could not start</h2><div class="sub">${esc(e.message||String(e))}</div>
+    <div class="note">If this mentions a missing function or table, run
+      <span class="mono">schema.sql</span> in the Supabase SQL editor first.</div>
+  </div></div>`;
+});
+</script>
+</body>
+</html>

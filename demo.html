@@ -1,0 +1,964 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vendor Registration Portal — Demo</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --ink:#14181f; --muted:#5d6673;
+    --line:#e2e6ec; --brand:#1d4ed8; --brand-ink:#fff;
+    --ok:#0f7a4a; --okbg:#e8f6ef; --warn:#a15c00; --warnbg:#fdf3e2;
+    --bad:#b3261e; --badbg:#fdeceb; --info:#1d4ed8; --infobg:#eaf0fe;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif;
+       background:var(--bg);color:var(--ink)}
+  h1,h2,h3{margin:0;font-weight:640;letter-spacing:-.01em}
+  a{color:var(--brand)}
+
+  .demobar{background:#2b2f38;color:#fff;padding:8px 20px;display:flex;
+           gap:14px;align-items:center;flex-wrap:wrap;font-size:13px}
+  .demobar b{background:#f5c518;color:#1a1a1a;padding:1px 7px;border-radius:4px;
+             font-size:11px;letter-spacing:.06em}
+  .demobar select{background:#3c414c;color:#fff;border:1px solid #555c6a;
+                  border-radius:6px;padding:4px 8px;font:inherit}
+  .demobar .sp{flex:1}
+  .demobar button{background:none;border:1px solid #555c6a;color:#cfd5df;
+                  border-radius:6px;padding:4px 10px;font:inherit;cursor:pointer}
+  .demobar button:hover{background:#3c414c}
+
+  header.app{background:var(--card);border-bottom:1px solid var(--line);
+             padding:14px 20px;display:flex;align-items:center;gap:12px}
+  header.app .logo{width:30px;height:30px;border-radius:7px;background:var(--brand);
+       color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+  header.app .who{margin-left:auto;color:var(--muted);font-size:13px;text-align:right}
+
+  main{max-width:1080px;margin:0 auto;padding:22px 20px 60px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:22px;margin-bottom:16px}
+  .card > h2{font-size:17px;margin-bottom:4px}
+  .sub{color:var(--muted);font-size:13.5px;margin-bottom:18px}
+
+  .steps{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+  .steps div{flex:1;min-width:120px;padding:9px 12px;border-radius:8px;font-size:13px;
+      background:#eef1f5;color:var(--muted);border:1px solid transparent}
+  .steps div.on{background:var(--infobg);color:var(--brand);border-color:#c3d3fb;font-weight:600}
+  .steps div.done{background:var(--okbg);color:var(--ok)}
+
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 18px}
+  .grid .full{grid-column:1/-1}
+  label{display:block;font-size:12.5px;font-weight:600;color:#3b434f;margin-bottom:5px}
+  label .req{color:var(--bad)}
+  input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);
+      border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:2px solid #bcd0fb;border-color:var(--brand)}
+  textarea{min-height:70px;resize:vertical}
+  .hint{font-size:12px;color:var(--muted);margin-top:4px}
+  .err{font-size:12px;color:var(--bad);margin-top:4px;display:none}
+  .bad input{border-color:var(--bad);background:#fffafa}
+  .bad .err{display:block}
+  fieldset{border:1px solid var(--line);border-radius:10px;padding:16px;margin:0 0 16px}
+  legend{font-size:12.5px;font-weight:700;color:var(--muted);padding:0 6px;
+         text-transform:uppercase;letter-spacing:.05em}
+  .radios{display:flex;gap:18px;align-items:center;padding-top:4px}
+  .radios label{display:flex;gap:6px;align-items:center;font-weight:500;margin:0}
+  .radios input{width:auto}
+
+  .btn{padding:9px 16px;border-radius:8px;border:1px solid var(--line);
+       background:#fff;font:inherit;font-weight:600;cursor:pointer;color:var(--ink)}
+  .btn:hover{background:#f2f4f8}
+  .btn.pri{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+  .btn.pri:hover{filter:brightness(1.08)}
+  .btn.danger{color:var(--bad);border-color:#f0c4c1}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:18px}
+  .row .sp{flex:1}
+
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;
+     color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line)}
+  td{padding:11px 10px;border-bottom:1px solid #eef1f5}
+  tbody tr{cursor:pointer}
+  tbody tr:hover{background:#f7f9fc}
+
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11.5px;
+        font-weight:700;letter-spacing:.02em}
+  .p-draft{background:#eef1f5;color:var(--muted)}
+  .p-submitted{background:var(--infobg);color:var(--info)}
+  .p-checked{background:var(--warnbg);color:var(--warn)}
+  .p-approved{background:var(--okbg);color:var(--ok)}
+  .p-rejected{background:var(--badbg);color:var(--bad)}
+
+  .kv{display:grid;grid-template-columns:210px 1fr;gap:9px 16px;font-size:14px}
+  .kv dt{color:var(--muted);font-size:13px}
+  .kv dd{margin:0}
+  .mono{font-family:"Cascadia Mono",Consolas,monospace;font-size:13.5px}
+
+  .banner{border-radius:9px;padding:11px 14px;font-size:13.5px;margin-bottom:16px}
+  .b-info{background:var(--infobg);color:#1a3a9e}
+  .b-ok{background:var(--okbg);color:var(--ok)}
+  .b-warn{background:var(--warnbg);color:var(--warn)}
+  .b-bad{background:var(--badbg);color:var(--bad)}
+
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:18px}
+  .tabs button{background:none;border:none;border-bottom:2px solid transparent;
+       padding:9px 14px;font:inherit;font-weight:600;color:var(--muted);cursor:pointer}
+  .tabs button.on{color:var(--brand);border-bottom-color:var(--brand)}
+
+  dialog{border:none;border-radius:12px;padding:0;max-width:560px;width:92%;
+         box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  dialog::backdrop{background:rgba(15,20,30,.45)}
+  .dlg{padding:22px}
+
+  .note{font-size:12.5px;color:var(--muted);border-left:3px solid var(--line);
+        padding-left:12px;margin-top:16px}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+     background:#22262e;color:#fff;padding:11px 18px;border-radius:9px;font-size:14px;
+     box-shadow:0 8px 30px rgba(0,0,0,.3);z-index:99;max-width:90%}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}.kv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="demobar">
+  <b>DEMO</b>
+  <span>Nothing here is real. Data stays in this browser only.
+    <span id="persistNote" style="color:#f5c518"></span></span>
+  <span class="sp"></span>
+  <label style="margin:0;color:#cfd5df;font-weight:500">View as</label>
+  <select id="roleSel">
+    <option value="vendor">Vendor — Meridian Polymers</option>
+    <option value="vendor2">Vendor — Anvil Components (newly invited)</option>
+    <option value="st1">Staff — S. Rao (checker, owns 2)</option>
+    <option value="st2">Staff — A. Iyer (checker, owns 1)</option>
+    <option value="st3">Staff — You (approver, sees all)</option>
+  </select>
+  <button id="resetBtn">Reset demo data</button>
+</div>
+
+<header class="app">
+  <div class="logo">IK</div>
+  <div>
+    <h1 style="font-size:16px">Vendor Registration Portal</h1>
+    <div style="font-size:12.5px;color:var(--muted)">IKIO Solutions Private Limited</div>
+  </div>
+  <div class="who" id="who"></div>
+</header>
+
+<main id="app"></main>
+
+<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+
+<script>
+"use strict";
+
+/* ------------------------------------------------------------------
+   Demo store. localStorage stands in for the database so the whole
+   thing runs from a file with no server. The field list mirrors the
+   VRF ISPL paper form; swap fields here and in FIELDS below as the
+   real requirements arrive.
+------------------------------------------------------------------ */
+
+const KEY = "vrf-demo-v2";
+
+/* Internal staff. Every vendor is allocated to exactly one of these.
+   An approver sees the whole queue, because a final sign-off cannot be
+   blind to what it is signing off. */
+const STAFF = [
+  { id:"st1", name:"S. Rao",  role:"checker"  },
+  { id:"st2", name:"A. Iyer", role:"checker"  },
+  { id:"st3", name:"You",     role:"approver" }
+];
+const staffName = id => (STAFF.find(s=>s.id===id)||{}).name || "—";
+const isApprover = () => ROLE === "st3";
+const isStaffRole = r => r.startsWith("st");
+const CURRENCIES = ["INR","USD","EUR","GBP","AED"];
+const INCO = ["EXW","FOB","CIF","CFR","DDP","DAP"];
+const COUNTRIES = ["India","Germany","China","Singapore","United States","United Arab Emirates"];
+
+function seed(){
+  return {
+    vendors: [
+      { id:"v1", owner:"vendor", company_name:"Meridian Polymers Pvt Ltd",
+        country:"India", region:"Uttar Pradesh",
+        address1:"Plot 44, Sector 63", address2:"", address3:"",
+        city:"Noida", pin_code:"201301",
+        payment_terms:"45 days from invoice", order_currency:"INR", inco_terms:"EXW",
+        telephone_no:"01204455661", mobile_no:"9876500011", fax_no:"",
+        contact_sales:"R. Menon", email_sales:"sales@meridian.example",
+        contact_finance:"A. Rao", email_finance:"accounts@meridian.example",
+        pan_no:"AAACM1234F", tan_no:"DELM12345B", gstin_no:"09AAACM1234F1Z5",
+        msmed_covered:true, nature_of_work:"Injection moulded housings",
+        bank:{ beneficiary_name:"Meridian Polymers Pvt Ltd",
+               bank_name_addr:"HDFC Bank, Sector 62, Noida",
+               account_number:"112233445566", ifsc_code:"HDFC0001234", swift_code:"" },
+        docs:[{type:"msmed_certificate",name:"msme-cert.pdf"}],
+        allocated_staff_id:"st1",
+        status:"submitted", remarks:"", submitted_at:"2026-08-10T09:20:00",
+        checked_by:null, checked_at:null, approved_by:null, approved_at:null },
+
+      { id:"v2", owner:"—", company_name:"Kestrel Sheet Metal Co",
+        country:"India", region:"Delhi",
+        address1:"B-12, Okhla Phase II", address2:"", address3:"",
+        city:"New Delhi", pin_code:"110020",
+        payment_terms:"30 days from invoice", order_currency:"INR", inco_terms:"FOB",
+        telephone_no:"01126677881", mobile_no:"9876500022", fax_no:"",
+        contact_sales:"S. Kaur", email_sales:"sales@kestrel.example",
+        contact_finance:"P. Chawla", email_finance:"accounts@kestrel.example",
+        pan_no:"AABCK5678G", tan_no:"DELK67890C", gstin_no:"07AABCK5678G1Z2",
+        msmed_covered:false, nature_of_work:"Sheet metal fabrication",
+        bank:{ beneficiary_name:"Kestrel Sheet Metal Co",
+               bank_name_addr:"ICICI Bank, Okhla, New Delhi",
+               account_number:"998877665544", ifsc_code:"ICIC0005678", swift_code:"" },
+        docs:[], allocated_staff_id:"st2",
+        status:"checked", remarks:"Documents verified against GST portal.",
+        submitted_at:"2026-08-08T14:05:00",
+        checked_by:"A. Iyer", checked_at:"2026-08-09T11:30:00",
+        approved_by:null, approved_at:null },
+
+      { id:"v3", owner:"—", company_name:"Halden Optics GmbH",
+        country:"Germany", region:"Bavaria",
+        address1:"Lindenstrasse 9", address2:"", address3:"",
+        city:"Munich", pin_code:"80331",
+        payment_terms:"50% advance, 50% on shipment", order_currency:"EUR", inco_terms:"CIF",
+        telephone_no:"+49 89 555010", mobile_no:"+49 170 5550111", fax_no:"",
+        contact_sales:"M. Brandt", email_sales:"sales@halden.example",
+        contact_finance:"K. Vogel", email_finance:"ap@halden.example",
+        pan_no:"", tan_no:"", gstin_no:"", msmed_covered:null,
+        nature_of_work:"Optical lenses",
+        bank:{ beneficiary_name:"Halden Optics GmbH",
+               bank_name_addr:"Commerzbank, Munich",
+               account_number:"DE89370400440532013000", ifsc_code:"", swift_code:"COBADEFFXXX" },
+        docs:[], allocated_staff_id:"st1", status:"approved", remarks:"",
+        submitted_at:"2026-08-02T10:00:00",
+        checked_by:"S. Rao", checked_at:"2026-08-03T09:15:00",
+        approved_by:"You", approved_at:"2026-08-04T16:40:00" }
+    ],
+    invitations: [
+      { id:"i1", vendor_name:"Meridian Polymers Pvt Ltd", vendor_email:"accounts@meridian.example",
+        allocated_staff_id:"st1", status:"registered",
+        invited_at:"2026-08-06T10:00:00", expires_at:"2026-09-05T10:00:00" },
+      { id:"i2", vendor_name:"Kestrel Sheet Metal Co", vendor_email:"accounts@kestrel.example",
+        allocated_staff_id:"st2", status:"registered",
+        invited_at:"2026-08-05T09:00:00", expires_at:"2026-09-04T09:00:00" },
+      { id:"i3", vendor_name:"Anvil Components LLP", vendor_email:"accounts@anvil.example",
+        allocated_staff_id:"st1", status:"pending",
+        invited_at:"2026-08-11T15:30:00", expires_at:"2026-09-10T15:30:00" }
+    ],
+    audit: [
+      {at:"2026-08-11T15:30:00", who:"S. Rao", action:"vendor.invited", vendor:"Anvil Components LLP", detail:"allocated to S. Rao"},
+      {at:"2026-08-04T16:40:00", who:"You", action:"status.approve", vendor:"Halden Optics GmbH", detail:""},
+      {at:"2026-08-03T09:15:00", who:"S. Rao", action:"status.check", vendor:"Halden Optics GmbH", detail:""},
+      {at:"2026-08-09T11:30:00", who:"A. Iyer", action:"status.check", vendor:"Kestrel Sheet Metal Co", detail:"Documents verified against GST portal."}
+    ]
+  };
+}
+
+/* Browsers refuse localStorage on file:// pages in some settings, and the
+   refusal is a thrown exception rather than a null. Persistence is a nicety
+   here, so it must never be able to stop a button working: try it, fall back
+   to memory, and say so once in the demo bar. */
+let PERSIST = true;
+function load(){
+  try{
+    const r = localStorage.getItem(KEY);
+    localStorage.setItem(KEY + "-probe", "1");
+    localStorage.removeItem(KEY + "-probe");
+    if(r) return JSON.parse(r);
+  }catch(e){ PERSIST = false; }
+  return seed();
+}
+function save(){
+  if(!PERSIST) return;
+  try{ localStorage.setItem(KEY, JSON.stringify(DB)); }
+  catch(e){ PERSIST = false; noteNoPersist(); }
+}
+function noteNoPersist(){
+  const el = document.getElementById("persistNote");
+  if(el) el.textContent = "· Saving is off in this browser, so a refresh resets the demo.";
+}
+
+let DB = load();
+
+let ROLE = "vendor";
+const ROLE_NAME = {
+  vendor:"Meridian Polymers (vendor)",
+  vendor2:"Anvil Components (newly invited)",
+  st1:"S. Rao — Checker", st2:"A. Iyer — Checker", st3:"You — Approver"
+};
+
+function audit(action, vendorName, detail){
+  DB.audit.unshift({ at:new Date().toISOString().slice(0,19),
+                     who:ROLE_NAME[ROLE], action, vendor:vendorName, detail:detail||"" });
+  save();
+}
+
+/* ---------------- validation (same rules as schema.sql) ---------------- */
+const RX = {
+  gstin_no:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/,
+  pan_no:/^[A-Z]{5}[0-9]{4}[A-Z]$/,
+  tan_no:/^[A-Z]{4}[0-9]{5}[A-Z]$/,
+  ifsc_code:/^[A-Z]{4}0[A-Z0-9]{6}$/,
+  swift_code:/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/,
+  account_number:/^[0-9A-Z]{9,34}$/
+};
+const RX_MSG = {
+  gstin_no:"15 characters, e.g. 09AAACM1234F1Z5",
+  pan_no:"10 characters, e.g. AAACM1234F",
+  tan_no:"10 characters, e.g. DELM12345B",
+  ifsc_code:"11 characters, 5th must be 0, e.g. HDFC0001234",
+  swift_code:"8 or 11 characters, e.g. COBADEFFXXX",
+  account_number:"9–34 digits or letters"
+};
+
+const esc = s => String(s??"").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const mask = n => n ? "••••" + String(n).slice(-4) : "—";
+const fmtDate = s => s ? new Date(s).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}) : "—";
+const isIndia = v => (v.country||"").toLowerCase() === "india";
+
+function toast(msg){
+  const t = document.createElement("div");
+  t.className = "toast"; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 3200);
+}
+
+/* =================== VENDOR SIDE =================== */
+
+let step = 1;
+let draft = null;
+
+function blankVendor(){
+  return { id:"new", owner:"vendor2", company_name:"", country:"India", region:"",
+    address1:"", address2:"", address3:"", city:"", pin_code:"",
+    payment_terms:"", order_currency:"INR", inco_terms:"EXW",
+    telephone_no:"", mobile_no:"", fax_no:"",
+    contact_sales:"", email_sales:"", contact_finance:"", email_finance:"",
+    pan_no:"", tan_no:"", gstin_no:"", msmed_covered:null, nature_of_work:"",
+    bank:{beneficiary_name:"",bank_name_addr:"",account_number:"",ifsc_code:"",swift_code:""},
+    docs:[], allocated_staff_id:null, status:"draft", remarks:"", submitted_at:null,
+    checked_by:null, checked_at:null, approved_by:null, approved_at:null };
+}
+
+/* Stands in for claim_invitation(). In the real system the vendor has just
+   proved they control this address by receiving the magic link, so the
+   invitation is matched on email — never on a token carried in the URL.
+   The vendor record is created already allocated to the right staff member. */
+function claimInvitation(email){
+  const inv = DB.invitations.find(i => i.vendor_email === email);
+  if(!inv) return null;
+  if(new Date(inv.expires_at) < new Date()){ inv.status = "expired"; save(); return "expired"; }
+  const v = blankVendor();
+  v.company_name = inv.vendor_name;
+  v.email_finance = inv.vendor_email;
+  v.allocated_staff_id = inv.allocated_staff_id;
+  v.invitation_id = inv.id;
+  return v;
+}
+
+const INVITED_EMAIL = "accounts@anvil.example";   // the demo's pending invite
+
+function myVendor(){
+  let v = DB.vendors.find(x => x.owner === ROLE);
+  if(!v && ROLE === "vendor2"){
+    if(!draft){
+      const claimed = claimInvitation(INVITED_EMAIL);
+      draft = (claimed && claimed !== "expired") ? claimed : blankVendor();
+    }
+    return draft;
+  }
+  return v;
+}
+
+function field(v, key, label, opts){
+  opts = opts || {};
+  const val = opts.bank ? (v.bank[key] ?? "") : (v[key] ?? "");
+  const req = opts.req ? ' <span class="req">*</span>' : "";
+  const cls = opts.full ? "full" : "";
+  let ctl;
+  if(opts.type === "textarea"){
+    ctl = `<textarea data-k="${key}" ${opts.bank?'data-bank="1"':''}>${esc(val)}</textarea>`;
+  } else if(opts.options){
+    ctl = `<select data-k="${key}" ${opts.bank?'data-bank="1"':''}>` +
+      opts.options.map(o=>`<option ${o===val?"selected":""}>${esc(o)}</option>`).join("") +
+      `</select>`;
+  } else {
+    ctl = `<input data-k="${key}" ${opts.bank?'data-bank="1"':''} value="${esc(val)}"
+           ${opts.upper?'data-upper="1"':''} ${opts.ph?`placeholder="${esc(opts.ph)}"`:""}>`;
+  }
+  return `<div class="${cls}" data-wrap="${key}">
+    <label>${esc(label)}${req}</label>${ctl}
+    ${opts.hint?`<div class="hint">${esc(opts.hint)}</div>`:""}
+    <div class="err">${esc(RX_MSG[key]||"Required")}</div></div>`;
+}
+
+function renderVendor(){
+  const v = myVendor();
+  const app = document.getElementById("app");
+
+  if(v.status !== "draft"){ return renderVendorSubmitted(v); }
+
+  const india = isIndia(v);
+  let body = "";
+
+  if(step === 1){
+    body = `<fieldset><legend>Company</legend><div class="grid">
+      ${field(v,"company_name","Company Name",{req:1,full:1})}
+      ${field(v,"country","Country",{req:1,options:COUNTRIES})}
+      ${field(v,"region","Region (State of the Country)",{req:1})}
+      ${field(v,"address1","Address 1",{req:1,full:1})}
+      ${field(v,"address2","Address 2",{full:1})}
+      ${field(v,"address3","Address 3",{full:1})}
+      ${field(v,"city","City",{req:1})}
+      ${field(v,"pin_code","PIN Code",{req:1})}
+    </div></fieldset>
+
+    <fieldset><legend>Commercial terms</legend><div class="grid">
+      ${field(v,"payment_terms","Payment Terms",{req:1,ph:"e.g. 45 days from invoice"})}
+      ${field(v,"order_currency","Order Currency",{req:1,options:CURRENCIES})}
+      ${field(v,"inco_terms","INCO Terms",{req:1,options:INCO})}
+      ${field(v,"nature_of_work","Nature of Work",{req:1,type:"textarea",full:1})}
+    </div></fieldset>
+
+    <fieldset><legend>Contact</legend><div class="grid">
+      ${field(v,"telephone_no","Telephone No.")}
+      ${field(v,"mobile_no","Mobile No.",{req:1})}
+      ${field(v,"fax_no","FAX No.")}
+      <div></div>
+      ${field(v,"contact_sales","Contact Person — Sales",{req:1})}
+      ${field(v,"email_sales","E-Mail ID — Sales",{req:1})}
+      ${field(v,"contact_finance","Contact Person — Finance &amp; Accounts",{req:1})}
+      ${field(v,"email_finance","E-Mail ID — Finance &amp; Accounts",{req:1})}
+    </div></fieldset>`;
+  }
+
+  if(step === 2){
+    body = india ? `
+      <fieldset><legend>Statutory</legend><div class="grid">
+        ${field(v,"pan_no","PAN No.",{req:1,upper:1})}
+        ${field(v,"tan_no","TAN No.",{upper:1})}
+        ${field(v,"gstin_no","GSTIN No.",{req:1,upper:1,full:1})}
+        <div class="full">
+          <label>Whether party covered under the MSMED Act <span class="req">*</span></label>
+          <div class="radios">
+            <label><input type="radio" name="msmed" value="yes" ${v.msmed_covered===true?"checked":""}> Yes</label>
+            <label><input type="radio" name="msmed" value="no" ${v.msmed_covered===false?"checked":""}> No</label>
+          </div>
+        </div>
+        <div class="full" id="msmedBox" style="${v.msmed_covered===true?"":"display:none"}">
+          <label>MSMED certificate <span class="req">*</span></label>
+          <input type="file" id="msmedFile">
+          <div class="hint">${v.docs.some(d=>d.type==="msmed_certificate")
+              ? "Attached: " + esc(v.docs.find(d=>d.type==="msmed_certificate").name)
+              : "Required when covered under the Act."}</div>
+        </div>
+      </div></fieldset>` : `
+      <div class="banner b-info">Overseas vendor — Indian statutory fields
+        (PAN, TAN, GSTIN, MSMED) do not apply and are hidden.</div>`;
+
+    body += `<fieldset><legend>Bank detail</legend><div class="grid">
+      ${field(v,"beneficiary_name","Beneficiary Name",{req:1,bank:1,full:1})}
+      ${field(v,"bank_name_addr","Bank Name &amp; Address",{req:1,bank:1,type:"textarea",full:1})}
+      ${field(v,"account_number","Bank A/c No.",{req:1,bank:1,upper:1})}
+      <div data-wrap="acct2">
+        <label>Re-enter Bank A/c No. <span class="req">*</span></label>
+        <input id="acct2" data-upper="1" value="${esc(v.bank.account_number||"")}">
+        <div class="err">The two account numbers do not match</div>
+      </div>
+      ${india ? field(v,"ifsc_code","Bank IFSC Code",{req:1,bank:1,upper:1})
+              : field(v,"swift_code","SWIFT Code",{req:1,bank:1,upper:1})}
+    </div></fieldset>`;
+  }
+
+  if(step === 3){
+    body = `<div class="banner b-info">Check everything below, then submit.
+      After submitting you will not be able to edit — staff can send it back to you
+      for correction if something needs changing.</div>
+      ${summaryHTML(v, false)}`;
+  }
+
+  app.innerHTML = `<div class="card">
+    <h2>Vendor Registration Form</h2>
+    <div class="sub">All fields marked <span class="req">*</span> are required.
+      Your progress is saved as a draft — you can come back later.</div>
+    ${v.invitation_id ? `<div class="banner b-ok">You reached this form from the
+      invitation sent to <b>${esc(v.email_finance)}</b>. Your company name is
+      pre-filled from that invitation, and your registration will go to
+      <b>${esc(staffName(v.allocated_staff_id))}</b> at IKIO.</div>` : ""}
+    <div class="steps">
+      <div class="${step===1?"on":step>1?"done":""}">1. Company details</div>
+      <div class="${step===2?"on":step>2?"done":""}">2. Statutory &amp; bank</div>
+      <div class="${step===3?"on":""}">3. Review &amp; submit</div>
+    </div>
+    ${body}
+    <div class="row">
+      ${step>1?'<button class="btn" id="back">Back</button>':""}
+      <span class="sp"></span>
+      <button class="btn" id="saveDraft">Save draft</button>
+      ${step<3?'<button class="btn pri" id="next">Continue</button>'
+              :'<button class="btn pri" id="submit">Submit registration</button>'}
+    </div>
+    <div class="note">Demo note: the account number is stored separately from the
+      rest of the form and is never shown back to you in full — only the last four
+      digits. Staff must click to reveal it, and that click is logged.</div>
+  </div>`;
+
+  bindInputs(v);
+}
+
+function bindInputs(v){
+  document.querySelectorAll("[data-k]").forEach(el=>{
+    el.addEventListener("input", ()=>{
+      if(el.dataset.upper) el.value = el.value.toUpperCase();
+      const k = el.dataset.k;
+      if(el.dataset.bank) v.bank[k] = el.value; else v[k] = el.value;
+      el.closest("[data-wrap]").classList.remove("bad");
+      if(k === "country") renderVendor();
+    });
+  });
+  const a2 = document.getElementById("acct2");
+  if(a2) a2.addEventListener("input", ()=>{ a2.value = a2.value.toUpperCase();
+    a2.closest("[data-wrap]").classList.remove("bad"); });
+
+  document.querySelectorAll('input[name="msmed"]').forEach(r=>{
+    r.addEventListener("change", ()=>{
+      v.msmed_covered = r.value === "yes";
+      document.getElementById("msmedBox").style.display = v.msmed_covered ? "" : "none";
+    });
+  });
+  const mf = document.getElementById("msmedFile");
+  if(mf) mf.addEventListener("change", ()=>{
+    if(mf.files[0]){
+      v.docs = v.docs.filter(d=>d.type!=="msmed_certificate");
+      v.docs.push({type:"msmed_certificate", name:mf.files[0].name});
+      toast("Certificate attached (demo — the file is not uploaded anywhere)");
+    }
+  });
+
+  const on = (id,fn)=>{ const e=document.getElementById(id); if(e) e.onclick=fn; };
+  on("back", ()=>{ step--; renderVendor(); });
+  on("next", ()=>{ if(validate(v)){ step++; renderVendor(); } });
+  on("saveDraft", ()=>{ persistDraft(v); toast("Draft saved"); });
+  on("submit", ()=>confirmSubmit(v));
+}
+
+function markBad(key){
+  const w = document.querySelector(`[data-wrap="${key}"]`);
+  if(w){ w.classList.add("bad"); w.scrollIntoView({behavior:"smooth",block:"center"}); }
+  return false;
+}
+
+function validate(v){
+  const india = isIndia(v);
+  if(step === 1){
+    for(const k of ["company_name","region","address1","city","pin_code",
+                    "payment_terms","nature_of_work","mobile_no",
+                    "contact_sales","email_sales","contact_finance","email_finance"]){
+      if(!String(v[k]||"").trim()) return markBad(k);
+    }
+    for(const k of ["email_sales","email_finance"]){
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v[k])) return markBad(k);
+    }
+    return true;
+  }
+  if(step === 2){
+    if(india){
+      if(!RX.pan_no.test(v.pan_no||"")) return markBad("pan_no");
+      if(v.tan_no && !RX.tan_no.test(v.tan_no)) return markBad("tan_no");
+      if(!RX.gstin_no.test(v.gstin_no||"")) return markBad("gstin_no");
+      if(v.msmed_covered === null){ toast("Please answer the MSMED question"); return false; }
+      if(v.msmed_covered && !v.docs.some(d=>d.type==="msmed_certificate")){
+        toast("MSMED certificate must be attached when covered under the Act"); return false;
+      }
+    }
+    if(!String(v.bank.beneficiary_name||"").trim()) return markBad("beneficiary_name");
+    if(!String(v.bank.bank_name_addr||"").trim()) return markBad("bank_name_addr");
+    if(!RX.account_number.test(v.bank.account_number||"")) return markBad("account_number");
+    const a2 = document.getElementById("acct2");
+    if(a2 && a2.value !== v.bank.account_number) return markBad("acct2");
+    if(india && !RX.ifsc_code.test(v.bank.ifsc_code||"")) return markBad("ifsc_code");
+    if(!india && !RX.swift_code.test(v.bank.swift_code||"")) return markBad("swift_code");
+    return true;
+  }
+  return true;
+}
+
+function persistDraft(v){
+  if(v.id === "new"){
+    v.id = "v" + (DB.vendors.length + 1);
+    v.owner = ROLE;
+    DB.vendors.push(v);
+    const inv = DB.invitations.find(i => i.id === v.invitation_id);
+    if(inv) inv.status = "registered";
+    draft = null;
+  }
+  save();
+}
+
+function confirmSubmit(v){
+  showDialog(`<h2>Submit registration?</h2>
+    <p class="sub" style="margin:10px 0 18px">Once submitted, <b>${esc(v.company_name)}</b>
+      becomes read-only. Staff will review it, and can send it back to you if a
+      correction is needed.</p>
+    <div class="row" style="margin:0">
+      <span class="sp"></span>
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn pri" id="doSubmit">Yes, submit</button>
+    </div>`, ()=>{
+      document.getElementById("doSubmit").onclick = ()=>{
+        persistDraft(v);
+        v.status = "submitted";
+        v.submitted_at = new Date().toISOString().slice(0,19);
+        save();
+        audit("vendor.submitted", v.company_name, "");
+        document.getElementById("dlg").close();
+        step = 1;
+        toast("Submitted — staff have been notified");
+        render();
+      };
+    });
+}
+
+function renderVendorSubmitted(v){
+  const msg = {
+    submitted:["b-info","Submitted — under review. We will be in touch if anything is needed."],
+    checked:["b-warn","Checked by our team, awaiting final approval."],
+    approved:["b-ok","Approved. You are now registered as a vendor."],
+    rejected:["b-bad","Rejected. See the remarks below."]
+  }[v.status] || ["b-info",""];
+
+  document.getElementById("app").innerHTML = `<div class="card">
+    <h2>Your registration</h2>
+    <div class="sub">${esc(v.company_name)}</div>
+    <div class="banner ${msg[0]}">${esc(msg[1])}</div>
+    ${v.remarks?`<div class="banner b-warn"><b>Remarks from our team:</b> ${esc(v.remarks)}</div>`:""}
+    ${summaryHTML(v, false)}
+    <div class="note">Your bank account number is shown to you masked, and is stored
+      apart from the rest of this form. Nobody sees it in full without that access
+      being recorded.</div>
+  </div>`;
+}
+
+function summaryHTML(v, revealBank){
+  const india = isIndia(v);
+  const b = v.bank;
+  const rows = [
+    ["Company Name", v.company_name],
+    ["Country", v.country], ["Region / State", v.region],
+    ["Address", [v.address1,v.address2,v.address3].filter(Boolean).join(", ")],
+    ["City / PIN", `${v.city||"—"} / ${v.pin_code||"—"}`],
+    ["Payment Terms", v.payment_terms],
+    ["Order Currency", v.order_currency], ["INCO Terms", v.inco_terms],
+    ["Telephone / Mobile", `${v.telephone_no||"—"} / ${v.mobile_no||"—"}`],
+    ["FAX No.", v.fax_no],
+    ["Contact — Sales", `${v.contact_sales||"—"} · ${v.email_sales||"—"}`],
+    ["Contact — Finance", `${v.contact_finance||"—"} · ${v.email_finance||"—"}`],
+    ["Nature of Work", v.nature_of_work]
+  ];
+  if(india) rows.push(
+    ["PAN No.", v.pan_no], ["TAN No.", v.tan_no], ["GSTIN No.", v.gstin_no],
+    ["Covered under MSMED Act", v.msmed_covered===null?"—":(v.msmed_covered?"Yes":"No")],
+    ["MSMED certificate", v.docs.find(d=>d.type==="msmed_certificate")?.name || "—"]
+  );
+
+  const bank = [
+    ["Beneficiary Name", b.beneficiary_name],
+    ["Bank Name &amp; Address", b.bank_name_addr],
+    ["Bank A/c No.", revealBank ? `<span class="mono">${esc(b.account_number)}</span>`
+                                : `<span class="mono">${mask(b.account_number)}</span>`],
+    india ? ["Bank IFSC Code", b.ifsc_code] : ["SWIFT Code", b.swift_code]
+  ];
+
+  const dl = arr => `<dl class="kv">` + arr.map(([k,val])=>
+      `<dt>${k}</dt><dd>${val && String(val).startsWith("<") ? val : esc(val||"—")}</dd>`
+    ).join("") + `</dl>`;
+
+  return `<fieldset><legend>Company</legend>${dl(rows)}</fieldset>
+          <fieldset><legend>Bank detail</legend>${dl(bank)}</fieldset>`;
+}
+
+/* =================== STAFF SIDE =================== */
+
+let staffTab = "queue";
+let openId = null;
+let revealed = {};
+
+function renderStaff(){
+  const app = document.getElementById("app");
+  app.innerHTML = `<div class="card">
+    <div class="tabs">
+      <button class="${staffTab==="queue"?"on":""}" data-tab="queue">Registrations</button>
+      <button class="${staffTab==="invite"?"on":""}" data-tab="invite">Invitations</button>
+      <button class="${staffTab==="audit"?"on":""}" data-tab="audit">Access log</button>
+    </div>
+    <div id="tabBody"></div>
+  </div>`;
+  document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{
+    staffTab = b.dataset.tab; openId = null; renderStaff();
+  });
+  const body = document.getElementById("tabBody");
+  if(staffTab === "queue"){
+    body.innerHTML = openId ? detailHTML() : queueHTML();
+    openId ? bindDetail() : bindQueue();
+  } else if(staffTab === "invite"){
+    body.innerHTML = inviteHTML(); bindInvite();
+  } else {
+    body.innerHTML = auditHTML();
+  }
+}
+
+/* Allocation. Staff see the vendors they own; an approver sees the whole
+   queue, because a final sign-off cannot be blind to what it signs off. */
+function visibleVendors(){
+  return DB.vendors.filter(v =>
+    v.status !== "draft" && (isApprover() || v.allocated_staff_id === ROLE));
+}
+
+function queueHTML(){
+  const rows = visibleVendors();
+  return `<h2>Vendor registrations</h2>
+    <div class="sub">${isApprover()
+      ? "As approver you see every registration."
+      : "You see only the vendors allocated to you — "+
+        DB.vendors.filter(v=>v.status!=="draft").length+" exist in total."}
+      Bank details are never in this list; open one and click reveal, which is recorded.</div>
+    ${rows.length ? `<table><thead><tr>
+      <th>Company</th><th>Country</th><th>GSTIN</th><th>Owner</th>
+      <th>Status</th><th>Submitted</th></tr></thead><tbody>
+    ${rows.map(v=>`
+      <tr data-id="${v.id}">
+        <td><b>${esc(v.company_name)}</b><div style="font-size:12px;color:var(--muted)">${esc(v.nature_of_work)}</div></td>
+        <td>${esc(v.country)}</td>
+        <td class="mono">${esc(v.gstin_no||"—")}</td>
+        <td>${esc(staffName(v.allocated_staff_id))}</td>
+        <td><span class="pill p-${v.status}">${v.status}</span></td>
+        <td>${fmtDate(v.submitted_at)}</td>
+      </tr>`).join("")}
+    </tbody></table>` : `<div class="banner b-info">No vendors are allocated to you yet.</div>`}`;
+}
+
+function inviteHTML(){
+  const mine = DB.invitations.filter(i => isApprover() || i.allocated_staff_id === ROLE);
+  return `<h2>Invite a vendor</h2>
+    <div class="sub">Vendors never sign themselves up. Staff invite a known
+      supplier and allocate an owner at the same time, so a submission can
+      never arrive without someone responsible for it.</div>
+    <div class="grid">
+      <div><label>Vendor name <span class="req">*</span></label>
+        <input id="invName" placeholder="e.g. Trisha Castings Pvt Ltd"></div>
+      <div><label>Vendor e-mail <span class="req">*</span></label>
+        <input id="invEmail" placeholder="accounts@vendor.example">
+        <div class="hint">Use the Finance &amp; Accounts address, not a salesperson's.</div></div>
+      <div><label>Allocate to <span class="req">*</span></label>
+        <select id="invStaff">${STAFF.map(s=>
+          `<option value="${s.id}" ${s.id===ROLE?"selected":""}>${esc(s.name)} (${s.role})</option>`).join("")}</select></div>
+      <div style="display:flex;align-items:flex-end">
+        <button class="btn pri" id="sendInv">Send invitation</button></div>
+    </div>
+    <div class="note">The invitation e-mail carries a magic link, not a secret
+      URL that acts as a login. The vendor clicks it, proves they control that
+      address, and only then does a record exist in their name. A link that
+      <i>is</i> the login can be forwarded or logged, and then nobody can say
+      who actually submitted the bank details.</div>
+
+    <h2 style="margin-top:24px;font-size:15px">Invitations</h2>
+    <table><thead><tr><th>Vendor</th><th>E-mail</th><th>Owner</th>
+      <th>Status</th><th>Invited</th><th>Expires</th></tr></thead><tbody>
+    ${mine.map(i=>`<tr style="cursor:default">
+      <td><b>${esc(i.vendor_name)}</b></td>
+      <td class="mono" style="font-size:12.5px">${esc(i.vendor_email)}</td>
+      <td>${esc(staffName(i.allocated_staff_id))}</td>
+      <td><span class="pill ${i.status==="registered"?"p-approved":i.status==="pending"?"p-submitted":"p-draft"}">${esc(i.status)}</span></td>
+      <td>${fmtDate(i.invited_at)}</td>
+      <td>${fmtDate(i.expires_at)}</td>
+    </tr>`).join("")}
+    </tbody></table>`;
+}
+
+function bindInvite(){
+  document.getElementById("sendInv").onclick = ()=>{
+    const name = document.getElementById("invName").value.trim();
+    const email = document.getElementById("invEmail").value.trim().toLowerCase();
+    const staff = document.getElementById("invStaff").value;
+    if(!name){ toast("Vendor name is required"); return; }
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast("Enter a valid e-mail address"); return; }
+    if(DB.invitations.some(i=>i.vendor_email===email)){
+      toast("That address has already been invited"); return;
+    }
+    const now = new Date();
+    DB.invitations.unshift({
+      id:"i"+(DB.invitations.length+1), vendor_name:name, vendor_email:email,
+      allocated_staff_id:staff, status:"pending",
+      invited_at:now.toISOString().slice(0,19),
+      expires_at:new Date(now.getTime()+30*864e5).toISOString().slice(0,19)
+    });
+    save();
+    audit("vendor.invited", name, "allocated to " + staffName(staff));
+    toast("Invitation sent to " + email + " (simulated)");
+    renderStaff();
+  };
+}
+function bindQueue(){
+  document.querySelectorAll("tbody tr").forEach(tr=>
+    tr.onclick = ()=>{ openId = tr.dataset.id; renderStaff(); });
+}
+
+function detailHTML(){
+  const v = DB.vendors.find(x=>x.id===openId);
+  const owns = v.allocated_staff_id === ROLE;
+  const canCheck = !isApprover() && owns && v.status==="submitted";
+  const canApprove = isApprover() && v.status==="checked";
+  const sameHand = isApprover() && v.checked_by === ROLE_NAME[ROLE].split(" —")[0];
+
+  let why = "";
+  if(isApprover() && v.status==="submitted")
+    why = `<div class="banner b-warn">This must be checked by its allocated owner
+           (${esc(staffName(v.allocated_staff_id))}) before it can be approved.</div>`;
+  if(!isApprover() && v.status==="checked")
+    why = `<div class="banner b-info">Already checked. Approval is an approver's step —
+           the same person cannot do both.</div>`;
+  if(!isApprover() && !owns)
+    why = `<div class="banner b-bad">This vendor is allocated to
+           ${esc(staffName(v.allocated_staff_id))}, not to you.</div>`;
+  if(sameHand)
+    why = `<div class="banner b-bad">You checked this registration yourself, so you
+           cannot also approve it.</div>`;
+
+  return `<div class="row" style="margin:0 0 16px">
+      <button class="btn" id="back">← All registrations</button>
+      <span class="sp"></span>
+      <span class="pill p-${v.status}">${v.status}</span>
+    </div>
+    <h2>${esc(v.company_name)}</h2>
+    <div class="sub">${esc(v.city)}, ${esc(v.country)} · submitted ${fmtDate(v.submitted_at)}</div>
+    ${why}
+    ${v.remarks?`<div class="banner b-warn"><b>Remarks:</b> ${esc(v.remarks)}</div>`:""}
+    ${summaryHTML(v, !!revealed[v.id])}
+    <div class="row" style="margin-top:0">
+      ${revealed[v.id]
+        ? `<span class="pill p-submitted">Bank details revealed — logged against your name</span>`
+        : `<button class="btn" id="reveal">Reveal bank details</button>`}
+    </div>
+
+    <fieldset style="margin-top:18px"><legend>Sign-off</legend>
+      <dl class="kv">
+        <dt>Allocated owner</dt><dd>${esc(staffName(v.allocated_staff_id))}</dd>
+        <dt>Checked by</dt><dd>${esc(v.checked_by||"—")} ${v.checked_at?"· "+fmtDate(v.checked_at):""}</dd>
+        <dt>Approved by</dt><dd>${esc(v.approved_by||"—")} ${v.approved_at?"· "+fmtDate(v.approved_at):""}</dd>
+      </dl>
+    </fieldset>
+
+    <div class="row">
+      <button class="btn danger" id="reopen">Send back for correction</button>
+      <button class="btn danger" id="reject">Reject</button>
+      <span class="sp"></span>
+      <button class="btn pri" id="check" ${canCheck?"":"disabled"}>Mark as checked</button>
+      <button class="btn pri" id="approve" ${canApprove && !sameHand?"":"disabled"}>Approve</button>
+    </div>
+    <div class="note">Buttons are disabled here for clarity, but in the real system
+      the rule lives in the database — hiding a button is not what stops someone.</div>`;
+}
+
+function bindDetail(){
+  const v = DB.vendors.find(x=>x.id===openId);
+  const on = (id,fn)=>{ const e=document.getElementById(id); if(e && !e.disabled) e.onclick=fn; };
+
+  const shortName = ROLE_NAME[ROLE].split(" —")[0];
+
+  on("back", ()=>{ openId=null; renderStaff(); });
+  on("reveal", ()=>{
+    // Allocation is checked here, not only in the list — the same rule the
+    // database applies inside staff_reveal_bank_details().
+    if(!isApprover() && v.allocated_staff_id !== ROLE){
+      toast("Not authorised to view bank details for this vendor"); return;
+    }
+    revealed[v.id] = true;
+    audit("bank_details.revealed", v.company_name, "");
+    toast("Revealed — recorded in the access log");
+    renderStaff();
+  });
+  on("check", ()=>askRemarks("Mark as checked", r=>{
+    v.status="checked"; v.checked_by=shortName;
+    v.checked_at=new Date().toISOString().slice(0,19); v.remarks=r;
+    save(); audit("status.check", v.company_name, r); toast("Marked as checked"); renderStaff();
+  }));
+  on("approve", ()=>askRemarks("Approve registration", r=>{
+    v.status="approved"; v.approved_by=shortName;
+    v.approved_at=new Date().toISOString().slice(0,19); v.remarks=r;
+    save(); audit("status.approve", v.company_name, r); toast("Approved"); renderStaff();
+  }));
+  on("reject", ()=>askRemarks("Reject registration", r=>{
+    v.status="rejected"; v.remarks=r;
+    save(); audit("status.reject", v.company_name, r); toast("Rejected"); renderStaff();
+  }, true));
+  on("reopen", ()=>askRemarks("Send back for correction", r=>{
+    v.status="draft"; v.remarks=r; v.checked_by=null; v.checked_at=null;
+    save(); audit("status.reopen", v.company_name, r);
+    toast("Sent back to the vendor"); renderStaff();
+  }, true));
+}
+
+function askRemarks(title, cb, required){
+  showDialog(`<h2>${esc(title)}</h2>
+    <div class="sub" style="margin:8px 0 14px">
+      ${required?"A remark is required so the vendor knows what to fix.":"Remarks are optional."}</div>
+    <textarea id="rem" placeholder="Remarks"></textarea>
+    <div class="row" style="margin-top:16px">
+      <span class="sp"></span>
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn pri" id="ok">${esc(title)}</button>
+    </div>`, ()=>{
+      document.getElementById("ok").onclick = ()=>{
+        const r = document.getElementById("rem").value.trim();
+        if(required && !r){ toast("Please add a remark"); return; }
+        document.getElementById("dlg").close();
+        cb(r);
+      };
+    });
+}
+
+function auditHTML(){
+  return `<h2>Access log</h2>
+    <div class="sub">Append-only. Every reveal of a bank account and every status
+      change is recorded against a named person. In the real system this cannot be
+      edited or deleted by anyone using the app.</div>
+    <table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Vendor</th><th>Detail</th>
+    </tr></thead><tbody>
+    ${DB.audit.map(a=>`<tr style="cursor:default">
+      <td>${fmtDate(a.at)}</td><td>${esc(a.who)}</td>
+      <td><span class="mono">${esc(a.action)}</span></td>
+      <td>${esc(a.vendor)}</td><td style="color:var(--muted)">${esc(a.detail||"—")}</td>
+    </tr>`).join("")}
+    </tbody></table>`;
+}
+
+/* =================== shell =================== */
+
+function showDialog(html, after){
+  const d = document.getElementById("dlg");
+  document.getElementById("dlgBody").innerHTML = html;
+  d.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>d.close());
+  if(after) after();
+  d.showModal();
+}
+
+function render(){
+  document.getElementById("who").innerHTML =
+    `Signed in as <b>${esc(ROLE_NAME[ROLE])}</b>`;
+  if(isStaffRole(ROLE)) renderStaff(); else renderVendor();
+}
+
+document.getElementById("roleSel").onchange = e=>{
+  ROLE = e.target.value; step = 1; openId = null; render();
+};
+document.getElementById("resetBtn").onclick = ()=>{
+  DB = seed(); draft = null; revealed = {}; save(); step = 1; openId = null;
+  toast("Demo data reset"); render();
+};
+
+if(!PERSIST) noteNoPersist();
+render();
+</script>
+</body>
+</html>
