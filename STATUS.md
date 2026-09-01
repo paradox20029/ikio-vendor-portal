@@ -90,6 +90,49 @@ Logs — this is the fastest way to settle it). Leading theory was Brevo
 refusing the disposable `tozya.com` domain; unconfirmed either way. If this
 is resolved, delete this section rather than leaving a stale "open thread."
 
+## Banking data — current position and the gate before real vendors
+
+**Right now bank details ARE stored in Supabase**, in
+`public.vendor_bank_details`. This is deliberate and temporary: SAP
+access and its API contract are pending departmental discussion, and the
+portal has to stay functional in the meantime. Everything in that table
+is mock data per `TEST_PLAN.md`.
+
+`PORTAL_BANK_MODE` in `live/config.js` selects the behaviour:
+
+| Mode | Behaviour | Requires |
+|---|---|---|
+| `supabase` | Stored in Supabase, as originally built. **Current setting.** | fix-07 NOT applied |
+| `worker` | Posted to the Cloudflare Worker → SAP. Nothing stored here. | fix-07 applied + Worker deployed |
+| `off` | Not collected at all. Registrations submit without banking. | fix-07 applied |
+
+Worker mode fails closed: if `PORTAL_WORKER_URL` is empty it disables
+capture rather than falling back to Supabase.
+
+### Hard gate — do this before the first REAL vendor is invited
+
+The manager's rule is that vendor banking data must not sit in a
+third-party cloud database. While the portal is on mock data with the
+TEST ENVIRONMENT banner up, that rule is not yet in play. It comes into
+force the moment a real supplier is invited. In that order:
+
+1. `PORTAL_BANK_MODE` → `"worker"` (if SAP is ready) or `"off"`
+2. `PORTAL_ALLOW_BANK_DOCUMENTS` → `false`
+3. Redeploy `live/` to Netlify
+4. Delete cancelled-cheque files from Storage → `vendor-docs`
+5. Run `fix-07-remove-bank-storage.sql`
+
+**Do not run fix-07 before step 3.** The deployed site would call
+`save_bank_details`, which fix-07 drops, and the banking step would
+break for anyone mid-registration.
+
+**The non-obvious part:** dropping the table is not sufficient on its
+own. A cancelled cheque image shows the account number and IFSC, and
+those upload to Supabase *Storage*, which is the same third-party cloud.
+`PORTAL_ALLOW_BANK_DOCUMENTS = false` closes that, and fix-07 purges the
+existing rows — but the files themselves must be deleted in the Storage
+UI as well, since removing metadata rows leaves the images in the bucket.
+
 ## Known gaps / not yet done
 
 - **Leak test** (`TEST_PLAN.md`) has not been run against the live project.
