@@ -612,9 +612,13 @@ async function startVendor(){
   VENDOR.order_currency = VENDOR.order_currency || CURRENCIES[0];
   VENDOR.inco_terms     = VENDOR.inco_terms     || INCO[0];
   VENDOR.bank = { beneficiary_name:"", bank_name_addr:"", account_number:"", ifsc_code:"", swift_code:"" };
-  // No bank mask to load: Supabase holds no banking data at all. When the
-  // Worker is live, the masked tail comes from SAP via the Worker instead.
+  // The masked tail is only available while banking lives in Supabase.
+  // In worker mode it would come from SAP; in off mode there is nothing.
   BANK_MASK = null;
+  if(bankViaSupabase()){
+    const { data:mask } = await sb.rpc("get_my_bank_last4");
+    BANK_MASK = (mask && mask[0]) || null;
+  }
 
   // Load what has already been attached. Without this an upload appears
   // to vanish the moment the step re-renders, and the vendor re-uploads
@@ -743,8 +747,13 @@ function renderVendor(){
     // account number could reach Supabase even accidentally.
     body += bankCaptureEnabled()
       ? `<fieldset><legend>Bank detail</legend>
-      <div class="banner b-info">These details are sent directly to IKIO's
-        SAP system and are never stored in this portal's database.</div>
+      ${bankViaWorker()
+        ? `<div class="banner b-info">These details are sent directly to IKIO's
+             SAP system and are never stored in this portal's database.</div>`
+        : BANK_MASK
+        ? `<div class="banner b-info">Bank details are already on file
+             (${esc(BANK_MASK.masked)}). Re-entering them below will replace them.</div>`
+        : ""}
       <div class="grid">
       ${field(v,"beneficiary_name","Beneficiary Name",{req:1,bank:1,full:1})}
       ${field(v,"bank_name_addr","Bank Name &amp; Address",{req:1,bank:1,type:"textarea",full:1})}
@@ -783,6 +792,9 @@ function renderVendor(){
         <div class="sub" style="margin-bottom:12px">Print this page (or save it
           as PDF), sign and stamp it, then upload the scan. The printed copy
           carries exactly the details shown above.</div>
+        ${!bankDocsAllowed() ? `<div class="banner b-warn">Please do not write
+          bank account details on the signed copy — they are collected
+          separately and must not be uploaded here.</div>` : ""}
         <button class="btn" id="printForm" type="button">Print / save as PDF</button>
         <div class="grid" style="margin-top:14px">
           ${slot("signed_vrf","Signed &amp; stamped form","PDF or photo of the signed copy.")}
@@ -793,7 +805,9 @@ function renderVendor(){
         <div class="grid">
           ${india ? slot("gst_certificate","GST certificate","Optional but speeds up verification.") : ""}
           ${india ? slot("pan_card","PAN card","Optional.") : ""}
-          ${slot("cancelled_cheque","Cancelled cheque","Optional. Confirms the bank account name.")}
+          ${bankDocsAllowed()
+            ? slot("cancelled_cheque","Cancelled cheque","Optional. Confirms the bank account name.")
+            : ""}
           ${slot("other","Any other document","Optional.")}
         </div>
       </fieldset>`;
@@ -1057,14 +1071,29 @@ async function saveStep(silentValidate){
     if(error){ fail(error); return false; }
   }
 
-  // Banking goes to the Worker → SAP, never to Supabase. If the hand-off
+  // Banking is routed by PORTAL_BANK_MODE. In either mode, if the hand-off
   // fails we stop here and say so, rather than advancing the form and
   // leaving the vendor thinking their details were captured.
   const b = v.bank;
   if(step === 2 && bankCaptureEnabled()
      && (b.account_number || b.beneficiary_name || b.bank_name_addr)){
-    const bankErr = await sendBankToSap();
-    if(bankErr){ fail(bankErr); return false; }
+    if(bankViaWorker()){
+      const bankErr = await sendBankToSap();
+      if(bankErr){ fail(bankErr); return false; }
+    } else {
+      // Never a direct table write — nobody holds privileges on
+      // vendor_bank_details; this function is the only way in.
+      const { error:bErr } = await sb.rpc("save_bank_details", {
+        p_beneficiary_name: b.beneficiary_name || null,
+        p_bank_name_addr:   b.bank_name_addr   || null,
+        p_account_number:   b.account_number   || null,
+        p_ifsc_code:        b.ifsc_code        || null,
+        p_swift_code:       b.swift_code       || null
+      });
+      if(bErr){ fail(bErr); return false; }
+      const { data:mask } = await sb.rpc("get_my_bank_last4");
+      BANK_MASK = (mask && mask[0]) || null;
+    }
   }
   return true;
 }
@@ -1112,12 +1141,21 @@ function renderVendorSubmitted(v){
 
 /* The vendor never sees their own account number in full — only what they
    typed this session, or the masked value the database hands back. */
-/* Banking is captured only when a Cloudflare Worker is configured to carry
-   it to SAP. No Worker means no capture — see PORTAL_WORKER_URL in
-   config.js. */
+/* Where banking data goes. Set by PORTAL_BANK_MODE in config.js and read
+   in one place so a single line switches the whole portal between
+   storing in Supabase, routing to SAP via the Worker, or not collecting
+   banking data at all. */
+const bankMode      = () => (window.PORTAL_BANK_MODE || "off").toLowerCase();
+const bankViaSupabase = () => bankMode() === "supabase";
+const bankViaWorker   = () => bankMode() === "worker"
+                              && !!(window.PORTAL_WORKER_URL||"").trim();
 function bankCaptureEnabled(){
-  return !!(window.PORTAL_WORKER_URL && window.PORTAL_WORKER_URL.trim());
+  return bankViaSupabase() || bankViaWorker();
 }
+/* Cheque images and signed forms carry the same data as the columns do.
+   Kept separate so the boundary can be closed for documents and fields
+   together — dropping the table alone would leave this open. */
+const bankDocsAllowed = () => window.PORTAL_ALLOW_BANK_DOCUMENTS !== false;
 
 /* Posts the banking payload straight to the Worker, which forwards it to
    SAP through Cloudflare Tunnel and returns a draft reference. The payload
@@ -1447,14 +1485,17 @@ async function renderDetail(){
         ? { beneficiary_name:full.beneficiary_name, bank_name_addr:full.bank_name_addr,
             ifsc_code:full.ifsc_code, swift_code:full.swift_code,
             accountText:full.account_number }
-        : { accountText: v.has_sap_draft ? "held in SAP" : "not captured" })}
+        : { accountText: bankViaWorker() ? (v.has_sap_draft ? "held in SAP" : "not captured")
+                                         : (v.account_masked || "not captured") })}
     <div class="row" style="margin-top:0">
       ${ME.isViewer
         ? `<span class="pill p-draft">View-only access — bank details are not available</span>`
         : !bankCaptureEnabled()
-        ? `<span class="pill p-draft">Bank details are held in SAP, not in this portal</span>`
+        ? `<span class="pill p-draft">Bank details are not held in this portal</span>`
         : full ? `<span class="pill p-submitted">Bank details revealed — logged against your name</span>`
-               : `<button class="btn" id="reveal" ${v.has_sap_draft?"":"disabled"}>Reveal bank details from SAP</button>`}
+        : bankViaWorker()
+        ? `<button class="btn" id="reveal" ${v.has_sap_draft?"":"disabled"}>Reveal bank details from SAP</button>`
+        : `<button class="btn" id="reveal" ${v.has_bank_details?"":"disabled"}>Reveal bank details</button>`}
     </div>
     <fieldset style="margin-top:18px"><legend>Sign-off</legend><dl class="kv">
       <dt>Checked</dt><dd>${v.checked_at?fmtDate(v.checked_at):"—"}</dd>
@@ -1490,20 +1531,26 @@ spec, these values must not persist in the browser.
   const on=(id,fn)=>{const e=document.getElementById(id); if(e&&!e.disabled) e.onclick=fn;};
   on("back", ()=>{ openId=null; renderStaff(); });
   on("reveal", async ()=>{
-    const { data:{ session } } = await sb.auth.getSession();
-    if(!session) return fail(new Error("Your session has expired — sign in again."));
     let d;
-    try{
-      const res = await fetch(
-        window.PORTAL_WORKER_URL.replace(/\/$/,"") + "/api/vendor/" + v.id + "/bank-details",
-        { headers:{ "Authorization":"Bearer " + session.access_token } });
-      if(!res.ok) return fail(new Error(
-        res.status === 403 ? "You are not authorised to view these bank details."
-                           : "Could not retrieve bank details from SAP (" + res.status + ")."));
-      d = [await res.json()];
-    }catch(err){
-      return fail(new Error("Could not reach SAP. The connection may be down — "
-                            + "contact IT rather than retrying repeatedly."));
+    if(bankViaWorker()){
+      const { data:{ session } } = await sb.auth.getSession();
+      if(!session) return fail(new Error("Your session has expired — sign in again."));
+      try{
+        const res = await fetch(
+          window.PORTAL_WORKER_URL.replace(/\/$/,"") + "/api/vendor/" + v.id + "/bank-details",
+          { headers:{ "Authorization":"Bearer " + session.access_token } });
+        if(!res.ok) return fail(new Error(
+          res.status === 403 ? "You are not authorised to view these bank details."
+                             : "Could not retrieve bank details from SAP (" + res.status + ")."));
+        d = [await res.json()];
+      }catch(err){
+        return fail(new Error("Could not reach SAP. The connection may be down — "
+                              + "contact IT rather than retrying repeatedly."));
+      }
+    } else {
+      const { data:r, error:e } = await sb.rpc("staff_reveal_bank_details",{ p_vendor_id:v.id });
+      if(e) return fail(e);
+      d = r;
     }
     revealCache[v.id] = (d && d[0]) || {};
     toast("Revealed — recorded in the access log");

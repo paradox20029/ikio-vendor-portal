@@ -33,16 +33,38 @@ window.PORTAL_URL = "";
    "do not enter real bank details" banner. Leave true while testing. */
 window.PORTAL_TEST_MODE = true;
 
-/* Cloudflare Worker endpoint for banking data.
+/* ---- Where banking data goes -------------------------------------
+   Three modes. Change ONE line here; the rest of the portal follows.
 
-   Bank account numbers, IFSC and SWIFT are NEVER stored in Supabase —
-   they are posted straight to this Worker, which forwards them through
-   Cloudflare Tunnel into on-premise SAP Business One. Supabase keeps
-   only the returned SAP draft reference.
+   "supabase"  Bank details are stored in Supabase, as originally built.
+               Requires fix-07 NOT to have been run. Use this while
+               testing with mock data only — it does not satisfy the
+               "no banking data in third-party cloud databases" rule.
 
-   Leave EMPTY until the Worker is deployed. While empty the portal
-   simply does not collect banking data at all, and registrations submit
-   without it. That is intentional — an incomplete registration is far
-   better than capturing account numbers with nowhere compliant to put
-   them. */
+   "worker"    Bank details are posted to PORTAL_WORKER_URL, which
+               forwards them to on-premise SAP. Nothing is stored here.
+               Requires fix-07 applied AND the Worker deployed.
+
+   "off"       Bank details are not collected at all. The fields are
+               never rendered, so no code path can put an account number
+               in this database. Registrations submit without them and
+               finance collects bank details separately.
+
+   Switching supabase -> off is safe at any time.
+   Switching to "worker" requires fix-07 first, or the portal will call
+   functions that no longer exist. See STATUS.md. */
+window.PORTAL_BANK_MODE = "supabase";
+
+/* Only used when PORTAL_BANK_MODE is "worker". */
 window.PORTAL_WORKER_URL = "";
+
+/* Document slots offered to vendors.
+
+   IMPORTANT: a cancelled cheque shows the account number and IFSC, and a
+   signed VRF may too. These upload into Supabase STORAGE, which is the
+   same third-party cloud the banking rule is about — dropping the
+   vendor_bank_details table does not cover them.
+
+   Set this to false when the compliance boundary takes effect, so
+   banking data cannot enter Supabase as an image instead of a column. */
+window.PORTAL_ALLOW_BANK_DOCUMENTS = true;

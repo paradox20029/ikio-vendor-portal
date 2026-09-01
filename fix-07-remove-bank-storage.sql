@@ -7,13 +7,29 @@
 -- never persisted here again — they transit to SAP via a Cloudflare
 -- Worker and live only in SAP Business One.
 --
+-- DO NOT RUN THIS YET.
+--
+-- SAP access and its API contract are still pending departmental
+-- discussion, so the portal is deliberately running in
+-- PORTAL_BANK_MODE = "supabase" for now, with mock data only. Running
+-- this file while that mode is set will break the banking step on the
+-- deployed site immediately: the front end will call save_bank_details
+-- and get_my_bank_last4, which this file drops.
+--
+-- RUN IT WHEN, IN THIS ORDER:
+--   1. config.js  PORTAL_BANK_MODE            -> "worker" (or "off")
+--   2. config.js  PORTAL_ALLOW_BANK_DOCUMENTS -> false
+--   3. Redeploy the live/ folder to Netlify
+--   4. Purge banking documents from Storage (section 0 below)
+--   5. Then run this file
+--
+-- Doing it in that order means there is never a window where the live
+-- site calls a function that no longer exists.
+--
 -- WHAT THIS DOES NOT DO
--- It does not build the Worker. Until the Worker exists, the portal
--- collects no banking data at all, and submit_registration() no longer
--- requires it. That is deliberate: a vendor who cannot submit is worse
--- than a vendor whose bank details are gathered separately for a few
--- weeks. Front-end config flag PORTAL_WORKER_URL controls whether the
--- banking step is shown; leave it empty until the Worker is live.
+-- It does not build the Worker, and it does not by itself achieve the
+-- compliance boundary. See section 0 — a cancelled cheque image in
+-- Supabase Storage contains the same account number as the column did.
 --
 -- IRREVERSIBLE. This deletes real rows and drops a table. There is no
 -- undo, and this project is on Supabase's free tier with no
@@ -27,6 +43,38 @@
 -- If any row is a real supplier's account, stop and export it to SAP
 -- first. Once dropped it cannot be recovered.
 -- ============================================================
+
+
+-- ---------- 0. Banking documents in Storage -------------------
+-- Dropping the table is not sufficient. A cancelled cheque shows the
+-- account number and IFSC; a signed VRF may too. Those are files in
+-- Supabase Storage, which is the same third-party cloud the rule is
+-- about. Set PORTAL_ALLOW_BANK_DOCUMENTS = false in config.js so no
+-- more arrive, then clear the existing ones.
+--
+-- Review first — this lists what would go:
+--   select d.doc_type, d.file_name, d.storage_path, v.company_name
+--   from public.vendor_documents d
+--   join public.vendors v on v.id = d.vendor_id
+--   where d.doc_type in ('cancelled_cheque','signed_vrf');
+--
+-- The metadata rows are removed below. The FILES themselves must be
+-- deleted separately in Storage -> vendor-docs, or via the Storage API:
+-- deleting these rows alone leaves the images sitting in the bucket.
+
+delete from public.vendor_documents
+ where doc_type = 'cancelled_cheque';
+
+-- signed_vrf is kept: it is the signed registration form and is not
+-- inherently financial. If your signed copies have handwritten bank
+-- details on them, uncomment this too and re-collect clean copies.
+-- delete from public.vendor_documents where doc_type = 'signed_vrf';
+
+-- Stop the type being usable again at the database level.
+alter table public.vendor_documents drop constraint if exists vendor_documents_doc_type_check;
+alter table public.vendor_documents add constraint vendor_documents_doc_type_check
+  check (doc_type in ('msmed_certificate','gst_certificate','pan_card',
+                      'signed_vrf','other'));
 
 
 -- ---------- 1. Purge, explicitly and before dropping ----------
