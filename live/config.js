@@ -32,3 +32,17 @@ window.PORTAL_URL = "";
 /* Set to false once you are collecting real vendor data — it removes the
    "do not enter real bank details" banner. Leave true while testing. */
 window.PORTAL_TEST_MODE = true;
+
+/* Cloudflare Worker endpoint for banking data.
+
+   Bank account numbers, IFSC and SWIFT are NEVER stored in Supabase —
+   they are posted straight to this Worker, which forwards them through
+   Cloudflare Tunnel into on-premise SAP Business One. Supabase keeps
+   only the returned SAP draft reference.
+
+   Leave EMPTY until the Worker is deployed. While empty the portal
+   simply does not collect banking data at all, and registrations submit
+   without it. That is intentional — an incomplete registration is far
+   better than capturing account numbers with nowhere compliant to put
+   them. */
+window.PORTAL_WORKER_URL = "";

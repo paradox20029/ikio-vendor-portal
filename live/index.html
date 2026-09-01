@@ -216,6 +216,16 @@ const STATES_IN = [
   "Ladakh","Lakshadweep","Puducherry"
 ];
 
+// RX: strict patterns used to validate input. For example
+// ^[0-9A-Z]{9,34}$ allows only uppercase letters and digits, 9-34 long.
+// RX_MSG: the matching human-readable message shown under a field when
+// its RX test fails.
+//
+// Use // or block comments here, never HTML-style comments. This is a
+// script of type="module", and JavaScript modules reject HTML comment
+// markers outright — one of them anywhere in this block blanks the
+// entire page with "HTML comments are not allowed in modules".
+
 const RX = {
   gstin_no:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/,
   pan_no:/^[A-Z]{5}[0-9]{4}[A-Z]$/,
@@ -233,11 +243,26 @@ const RX_MSG = {
   account_number:"9–34 digits or letters",
   acct2:"The two account numbers do not match"
 };
+ 
+  /* 
+ (esc): A crucial security function. It takes any string and replaces characters like < and >
+with their safe HTML entity equivalents (&lt;). This prevents Cross-Site Scripting (XSS) attacks if 
+a user types malicious scripts into input fields. It ensures that any user-provided content is displayed as text, 
+not executed as code.
 
+(fmtDate): Takes a raw database timestamp and formats it cleanly for the Indian locale (e.g., "24 Oct 2023,
+
+(isIndia): A quick helper to check if the current vendor's country is set to India,
+used later to toggle Indian statutory fields. 
+*/
 const esc = s => String(s??"").replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmtDate = s => s ? new Date(s).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}) : "—";
 const isIndia = v => (v.country||"").toLowerCase() === "india";
 
+
+/* creates a temporary popup message at the bottom of the screen. It dynamically creates 
+a <div>, sets its text, attaches it to the page, and sets a timer (setTimeout) 
+  to delete it from the DOM after 3.6 seconds (or a custom duration ms).*/
 function toast(msg, ms){
   const t = document.createElement("div");
   t.className = "toast"; t.textContent = msg;
@@ -248,6 +273,15 @@ function toast(msg, ms){
    are written for the user, not for a log. */
 /* Constraint names are meaningful to Postgres and meaningless to a vendor.
    Translate the ones we defined; pass anything else through unchanged. */
+
+   /* (CONSTRAINT_MSG): If a bad piece of data somehow bypasses the frontend regex, the Postgres database 
+   will reject it and throw a "Constraint Violation." This dictionary maps those ugly database constraint 
+   names to friendly text.
+(errDetail): Inspects raw Postgres error codes. For example, if it sees 42501, it appends 
+"(database permission denied)" to help developers debug Row Level Security issues.
+(fail): The master error handler. It takes an error object e, extracts the text, 
+checks if it contains any of the known SQL constraints from CONSTRAINT_MSG 
+(swapping in the friendly text if it does), and finally displays the result using the toast() function. */
 const CONSTRAINT_MSG = {
   pan_format:   "PAN must look like AAACM1234F — 5 letters, 4 digits, 1 letter.",
   tan_format:   "TAN must look like DELM12345B — 4 letters, 5 digits, 1 letter.",
@@ -276,6 +310,12 @@ function fail(e){
   toast(msg, 5200);
 }
 
+
+/* (showDialog): Grabs the native <dialog id="dlg"> element from the HTML, injects custom HTML into its body, 
+  automatically binds any buttons with a data-close attribute so they close the modal, and calls .showModal() 
+  to dim the background and pop it up.
+(busy): Overwrites the main screen with a centered loading spinner and a custom message 
+(e.g., "Signing you in...").*/
 function showDialog(html, after){
   const d = document.getElementById("dlg");
   document.getElementById("dlgBody").innerHTML = html;
@@ -288,6 +328,14 @@ function busy(msg){ app.innerHTML = `<div class="center"><div class="card"><span
 /* Where a sign-in link should land the recipient. On a deployed site this
    must be the public URL: a link pointing at localhost is useless to
    anyone but the person who sent it. */
+   /*
+   (portalUrl): When Supabase sends a magic sign-in link via email, it needs to know where to redirect the 
+   user after they click it. This function checks config.js for a hardcoded URL, or defaults to the current 
+   browser URL.
+(onLocalhost): A simple regex check to see if the app is running on a developer's local machine. 
+This is used later to warn staff members that sending a "localhost" email link to an external vendor 
+won't work, because the vendor can't access the developer's local computer.
+   */
 function portalUrl(){
   return (window.PORTAL_URL && window.PORTAL_URL.trim())
       || location.href.split("#")[0];
@@ -297,6 +345,17 @@ const onLocalhost = () => /^(localhost|127\.)/.test(location.hostname);
 /* Sends the vendor a one-time sign-in link. Used both when an invitation
    is first created and when staff resend it, since links expire long
    before the 30-day invitation does. */
+
+   /*
+   The Logic: Instead of managing passwords for hundreds of external vendors, 
+   the portal uses OTP (One Time Passwords) delivered as "Magic Links." It calls Supabase's signInWithOtp function. When the user clicks the link in their email, they are instantly authenticated.
+
+The Syntax (options: { ... }): It passes portalUrl() so Supabase knows 
+where to redirect the browser after the user clicks the link in their inbox.
+
+Production Error Handling: A generic "HTTP 504" means nothing to a normal user. 
+The code explicitly catches SMTP (email server) timeouts and rate limits (429), translating them into highly specific, actionable error messages.
+   */
 async function emailSignInLink(email){
   const { error } = await sb.auth.signInWithOtp({
     email, options:{ emailRedirectTo: portalUrl() }
@@ -317,10 +376,19 @@ async function emailSignInLink(email){
 }
 
 /* ================= session ================= */
-
+/*The Logic: This is the application's "brain" or state layer.
+Because this is a Single-Page Application (SPA), the browser doesn't 
+reload between pages. These global variables hold the current user's profile (ME), 
+the current vendor's data (VENDOR), and the secure bank mask (BANK_MASK) in memory.*/
 let SESSION = null, ME = { email:"", isStaff:false, isApprover:false, isViewer:false, staffId:null };
 let VENDOR = null, BANK_MASK = null;
 
+/*The Logic: This is the entry point that runs when the 
+page loads. It checks the browser's local storage for an 
+active Supabase session. If SESSION is null 
+(the user is not logged in), it halts and immediately triggers 
+the renderLogin() screen. If they are logged in, 
+it populates the ME object with their ID and email.*/
 async function boot(){
   const { data:{ session } } = await sb.auth.getSession();
   SESSION = session;
@@ -330,6 +398,24 @@ async function boot(){
   ME.email = SESSION.user.email;
   ME.staffId = SESSION.user.id;
 
+
+
+/*
+The Logic: The frontend needs to know if the logged-in user is a 
+vendor or internal staff.
+
+sb.rpc(...): Remote Procedure Calls. The frontend asks the 
+Postgres database to run specific backend SQL functions 
+(like is_staff).
+
+Promise.all([...]): A fantastic performance optimization. 
+Instead of waiting for is_staff to finish, then asking for 
+approver, and then viewer, Promise.all fires all three network 
+requests simultaneously.
+
+The Syntax (!!): The double-bang !!staff is a quick JavaScript 
+trick to coerce any value into a strict boolean (true or false).
+*/
   busy("Signing you in…");
   // Attach any colleague invitation waiting for this address, before we
   // ask what role they hold. Returns null and does nothing for everyone else.
@@ -383,7 +469,15 @@ async function boot(){
       };
     });
   };
+/*
+The Logic: If the RBAC check determined the user is staff, it 
+loads the internal dashboard (renderStaff()). Otherwise, it 
+routes them to the vendor form (startVendor()).
 
+onAuthStateChange: This is a listener. If a user has the portal
+ open in a tab, clicks a magic link in a different tab, this 
+ tab will detect the SIGNED_IN event and automatically run boot() without them needing to refresh the page
+*/
   if(ME.isStaff) return renderStaff();
   return startVendor();
 }
@@ -391,6 +485,20 @@ async function boot(){
 sb.auth.onAuthStateChange((ev)=>{ if(ev === "SIGNED_IN" && !SESSION) boot(); });
 
 /* ================= login ================= */
+/*
+The Logic: Replaces the screen with the login HTML. It attaches 
+a click listener (go) to the button.
+
+The Syntax (.trim().toLowerCase()): Cleans up the input. If a 
+user accidentally types a space after their email, .trim() 
+removes it, preventing authentication failures.
+
+Hidden Staff Password UI: At the bottom of renderLogin 
+(in your full code), there is a hidden button for "IKIO staff — 
+sign in with a password." Vendors use magic links, but staff can 
+use passwords so they don't have to wait for an email every time 
+they need to do internal work.
+*/
 
 function renderLogin(){
   app.innerHTML = `<div class="center"><div class="card">
@@ -465,6 +573,19 @@ function renderLogin(){
 /* ================= vendor ================= */
 
 let step = 1;
+/*
+The Logic: When a vendor signs in, the system immediately runs 
+claim_invitation on the database. This securely ties the magic-link email to the database invitation row. Next, it grabs the vendor's draft record.
+
+Defaulting Dropdowns: It sets default values for country and 
+currency (e.g., COUNTRIES[0] is "India") if the database row 
+is empty. This ensures the JavaScript model perfectly matches 
+the default <select> options visible on the screen.
+
+Bank data: there is nothing to fetch. Supabase holds no banking fields
+at all — they live only in SAP Business One, reachable through the
+Cloudflare Worker. BANK_MASK is therefore always null here.
+*/
 
 async function startVendor(){
   busy("Loading your registration…");
@@ -491,8 +612,9 @@ async function startVendor(){
   VENDOR.order_currency = VENDOR.order_currency || CURRENCIES[0];
   VENDOR.inco_terms     = VENDOR.inco_terms     || INCO[0];
   VENDOR.bank = { beneficiary_name:"", bank_name_addr:"", account_number:"", ifsc_code:"", swift_code:"" };
-  const { data:mask } = await sb.rpc("get_my_bank_last4");
-  BANK_MASK = (mask && mask[0]) || null;
+  // No bank mask to load: Supabase holds no banking data at all. When the
+  // Worker is live, the masked tail comes from SAP via the Worker instead.
+  BANK_MASK = null;
 
   // Load what has already been attached. Without this an upload appears
   // to vanish the moment the step re-renders, and the vendor re-uploads
@@ -505,6 +627,17 @@ async function startVendor(){
   renderVendor();
 }
 
+/*
+The Logic: Instead of writing out 30+ identical HTML blocks for
+ every input (which would make the file massive), this helper 
+ function generates them on the fly. You pass it the data object
+  v, the database column key, and formatting opts.
+
+The Syntax (??): The nullish coalescing operator (v[key] ?? ""). 
+If the database value is null or undefined, it safely falls back 
+to an empty string so the HTML input doesn't physically say 
+"null" in the box.
+*/
 function field(v, key, label, opts){
   opts = opts || {};
   const val = opts.bank ? (v.bank[key] ?? "") : (v[key] ?? "");
@@ -531,6 +664,19 @@ function field(v, key, label, opts){
     <div class="err">${esc(RX_MSG[key]||"Required")}</div></div>`;
 }
 
+
+/*
+
+The Logic: This is the core state machine. It checks the global 
+step integer (1, 2, or 3) and constructs only the HTML needed 
+for that phase.
+
+Conditional Rendering: If isIndia(v) is true, it renders the 
+GSTIN/PAN fields. If false, it dynamically hides them and 
+shows an informational banner instead. If the vendor's status 
+is anything other than "draft," it completely locks the form 
+and routes to renderVendorSubmitted().
+*/
 function renderVendor(){
   const v = VENDOR;
   if(v.status !== "draft") return renderVendorSubmitted(v);
@@ -591,9 +737,14 @@ function renderVendor(){
       : `<div class="banner b-info">Overseas vendor — Indian statutory fields
          (PAN, TAN, GSTIN, MSMED) do not apply and are hidden.</div>`;
 
-    body += `<fieldset><legend>Bank detail</legend>
-      ${BANK_MASK ? `<div class="banner b-info">Bank details are already on file
-        (${esc(BANK_MASK.masked)}). Re-entering them below will replace them.</div>` : ""}
+    // Banking is only collected when a Worker exists to carry it straight
+    // to SAP. With no Worker configured the fields are not rendered at all
+    // — not hidden, not disabled, absent — so there is no path by which an
+    // account number could reach Supabase even accidentally.
+    body += bankCaptureEnabled()
+      ? `<fieldset><legend>Bank detail</legend>
+      <div class="banner b-info">These details are sent directly to IKIO's
+        SAP system and are never stored in this portal's database.</div>
       <div class="grid">
       ${field(v,"beneficiary_name","Beneficiary Name",{req:1,bank:1,full:1})}
       ${field(v,"bank_name_addr","Bank Name &amp; Address",{req:1,bank:1,type:"textarea",full:1})}
@@ -605,7 +756,12 @@ function renderVendor(){
       </div>
       ${india ? field(v,"ifsc_code","Bank IFSC Code",{req:1,bank:1,upper:1,span:2})
               : field(v,"swift_code","SWIFT Code",{req:1,bank:1,upper:1,span:2})}
-    </div></fieldset>`;
+    </div></fieldset>`
+      : `<fieldset><legend>Bank detail</legend>
+      <div class="banner b-warn">Bank details are <b>not</b> collected through
+        this portal at present. IKIO will contact you separately to capture
+        them securely. You can complete and submit the rest of this
+        registration now.</div></fieldset>`;
   }
 
   if(step === 3){
@@ -667,6 +823,23 @@ function renderVendor(){
   bindVendorInputs();
 }
 
+
+/*
+The Logic: Once the HTML is injected, this function attaches 
+event listeners. data-k is a custom HTML attribute holding the 
+database column name.
+
+Event input vs blur:
+
+On input (every keystroke), it forces fields like PAN or GSTIN 
+to uppercase instantly.
+
+On blur (when the user clicks out of the field), it runs 
+tidyName(). This takes sloppy typing (e.g., "john doe") 
+and formats it to "John Doe". It waits for blur because 
+re-formatting text while someone is typing moves their 
+cursor around and is extremely frustrating.
+*/
 function bindVendorInputs(){
   const v = VENDOR;
   document.querySelectorAll("[data-k]").forEach(el=>{
@@ -767,9 +940,10 @@ function validateStep(){
       if(v.msmed_covered === null || v.msmed_covered === undefined){
         toast("Please answer the MSMED question"); return false; }
     }
+    // No Worker configured means no banking fields were rendered, so there
+    // is nothing to validate and nothing to require.
+    if(!bankCaptureEnabled()) return true;
     const b = v.bank;
-    const anyBank = b.account_number || b.beneficiary_name || b.bank_name_addr;
-    if(!anyBank && BANK_MASK) return true;   // already on file, not re-entering
     if(!String(b.beneficiary_name||"").trim()) return markBad("beneficiary_name");
     if(!String(b.bank_name_addr||"").trim()) return markBad("bank_name_addr");
     if(!RX.account_number.test(b.account_number||"")) return markBad("account_number");
@@ -843,6 +1017,25 @@ const STEP_COLS = {
   3: []
 };
 
+
+/*
+The Logic: When a vendor clicks "Continue," three things happen:
+
+syncFromDom() pulls any untouched <select> values from the HTML into 
+  the VENDOR object.
+
+validateStep() runs the Regex rules. If a field fails, it 
+scrolls the screen to the error and aborts the save.
+
+STEP_COLS ensures the app only saves the columns present on the 
+current screen. It builds a patch object and sends an update to Supabase.
+
+Bank routing: banking fields are never included in the Supabase patch.
+They go straight to the Cloudflare Worker via sendBankToSap(), which
+forwards them to on-premise SAP and returns only a draft reference.
+If no Worker is configured the fields are never rendered, so there is
+no code path by which an account number can reach this database.
+*/
 async function saveStep(silentValidate){
   syncFromDom();
   if(!validateStep()) return false;
@@ -864,20 +1057,14 @@ async function saveStep(silentValidate){
     if(error){ fail(error); return false; }
   }
 
+  // Banking goes to the Worker → SAP, never to Supabase. If the hand-off
+  // fails we stop here and say so, rather than advancing the form and
+  // leaving the vendor thinking their details were captured.
   const b = v.bank;
-  if(step === 2 && (b.account_number || b.beneficiary_name || b.bank_name_addr)){
-    // Never a direct table write. Nobody holds privileges on
-    // vendor_bank_details; this function is the only way in.
-    const { error:bErr } = await sb.rpc("save_bank_details", {
-      p_beneficiary_name: b.beneficiary_name || null,
-      p_bank_name_addr:   b.bank_name_addr   || null,
-      p_account_number:   b.account_number   || null,
-      p_ifsc_code:        b.ifsc_code        || null,
-      p_swift_code:       b.swift_code       || null
-    });
-    if(bErr){ fail(bErr); return false; }
-    const { data:mask } = await sb.rpc("get_my_bank_last4");
-    BANK_MASK = (mask && mask[0]) || null;
+  if(step === 2 && bankCaptureEnabled()
+     && (b.account_number || b.beneficiary_name || b.bank_name_addr)){
+    const bankErr = await sendBankToSap();
+    if(bankErr){ fail(bankErr); return false; }
   }
   return true;
 }
@@ -925,6 +1112,53 @@ function renderVendorSubmitted(v){
 
 /* The vendor never sees their own account number in full — only what they
    typed this session, or the masked value the database hands back. */
+/* Banking is captured only when a Cloudflare Worker is configured to carry
+   it to SAP. No Worker means no capture — see PORTAL_WORKER_URL in
+   config.js. */
+function bankCaptureEnabled(){
+  return !!(window.PORTAL_WORKER_URL && window.PORTAL_WORKER_URL.trim());
+}
+
+/* Posts the banking payload straight to the Worker, which forwards it to
+   SAP through Cloudflare Tunnel and returns a draft reference. The payload
+   never touches Supabase, and nothing from it is kept in this page after
+   the call returns. */
+async function sendBankToSap(){
+  const b = VENDOR.bank || {};
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session) return new Error("Your session has expired — please sign in again.");
+
+  try{
+    const res = await fetch(
+      window.PORTAL_WORKER_URL.replace(/\/$/,"") + "/api/vendor/" + VENDOR.id + "/bank-draft",
+      { method:"POST",
+        headers:{ "Content-Type":"application/json",
+                  "Authorization":"Bearer " + session.access_token,
+                  // Lets the Worker refuse to create a second SAP draft if
+                  // the browser retries after a timeout (spec section 5.3).
+                  "Idempotency-Key": VENDOR.id },
+        body: JSON.stringify({
+          beneficiary_name: b.beneficiary_name || null,
+          bank_name_addr:   b.bank_name_addr   || null,
+          account_number:   b.account_number   || null,
+          ifsc_code:        b.ifsc_code        || null,
+          swift_code:       b.swift_code       || null
+        }) });
+    if(!res.ok){
+      const t = await res.text().catch(()=>"");
+      return new Error("Could not send bank details to SAP (" + res.status + "). "
+                       + (t.slice(0,140) || "Nothing was saved — please try again."));
+    }
+    // Clear the values from memory as soon as they are handed off.
+    VENDOR.bank = { beneficiary_name:"", bank_name_addr:"",
+                    account_number:"", ifsc_code:"", swift_code:"" };
+    return null;
+  }catch(e){
+    return new Error("Could not reach the secure banking service. "
+                     + "Nothing was saved — please try again shortly.");
+  }
+}
+
 function vendorBankView(){
   const b = VENDOR.bank || {};
   return {
@@ -978,7 +1212,17 @@ function summaryHTML(v, bankView){
 }
 
 /* ================= staff ================= */
+/*
+The Logic: Instead of separate HTML pages, the staff interface is
+ a single container (#tabBody) that dynamically swaps out its
+  contents based on the staffTab string.
 
+The Syntax (data-tab): HTML data attributes (data-*) are used to
+ store state directly in the DOM. When a tab is clicked, the 
+ JavaScript reads b.dataset.tab, updates the global staffTab 
+ variable, resets the openId (closing any open vendor record), 
+ and re-renders the UI.
+*/
 let staffTab = "queue", openId = null, revealCache = {};
 
 async function renderStaff(){
@@ -1203,12 +1447,14 @@ async function renderDetail(){
         ? { beneficiary_name:full.beneficiary_name, bank_name_addr:full.bank_name_addr,
             ifsc_code:full.ifsc_code, swift_code:full.swift_code,
             accountText:full.account_number }
-        : { accountText: v.account_masked || "—" })}
+        : { accountText: v.has_sap_draft ? "held in SAP" : "not captured" })}
     <div class="row" style="margin-top:0">
       ${ME.isViewer
         ? `<span class="pill p-draft">View-only access — bank details are not available</span>`
+        : !bankCaptureEnabled()
+        ? `<span class="pill p-draft">Bank details are held in SAP, not in this portal</span>`
         : full ? `<span class="pill p-submitted">Bank details revealed — logged against your name</span>`
-               : `<button class="btn" id="reveal" ${v.has_bank_details?"":"disabled"}>Reveal bank details</button>`}
+               : `<button class="btn" id="reveal" ${v.has_sap_draft?"":"disabled"}>Reveal bank details from SAP</button>`}
     </div>
     <fieldset style="margin-top:18px"><legend>Sign-off</legend><dl class="kv">
       <dt>Checked</dt><dd>${v.checked_at?fmtDate(v.checked_at):"—"}</dd>
@@ -1224,16 +1470,54 @@ async function renderDetail(){
     <div class="note">These buttons mirror rules held in the database. If a rule
       is broken the database refuses and the reason appears here — the button
       state is a convenience, not the control.</div>`;
+/*
 
+The Logic: Bank details are hyper-sensitive and are not in this database
+at all. They live only in SAP Business One. Revealing them calls the
+Cloudflare Worker, which verifies the staff member's Supabase JWT, checks
+their role server-side, writes the audit entry, and only then fetches the
+values from SAP and streams them back.
+
+The Audit Trail: written by the Worker before disclosure, via
+write_audit_as(), so the log names a real person even though the read
+happened outside Postgres.
+
+The Cache: revealCache[v.id] keeps the result for this view only, so
+switching tabs and returning does not spam the audit log with duplicate
+reveal entries. Nothing is written to localStorage — per the architecture
+spec, these values must not persist in the browser.
+*/
   const on=(id,fn)=>{const e=document.getElementById(id); if(e&&!e.disabled) e.onclick=fn;};
   on("back", ()=>{ openId=null; renderStaff(); });
   on("reveal", async ()=>{
-    const { data:d, error:e } = await sb.rpc("staff_reveal_bank_details",{ p_vendor_id:v.id });
-    if(e) return fail(e);
+    const { data:{ session } } = await sb.auth.getSession();
+    if(!session) return fail(new Error("Your session has expired — sign in again."));
+    let d;
+    try{
+      const res = await fetch(
+        window.PORTAL_WORKER_URL.replace(/\/$/,"") + "/api/vendor/" + v.id + "/bank-details",
+        { headers:{ "Authorization":"Bearer " + session.access_token } });
+      if(!res.ok) return fail(new Error(
+        res.status === 403 ? "You are not authorised to view these bank details."
+                           : "Could not retrieve bank details from SAP (" + res.status + ")."));
+      d = [await res.json()];
+    }catch(err){
+      return fail(new Error("Could not reach SAP. The connection may be down — "
+                            + "contact IT rather than retrying repeatedly."));
+    }
     revealCache[v.id] = (d && d[0]) || {};
     toast("Revealed — recorded in the access log");
     renderStaff();
   });
+
+  /*The Logic: Staff cannot freely edit a vendor's status column.
+   They must use the advance_status RPC. The database acts as a state machine: it knows
+    that a "checker" can only move a record from submitted to checked, and only an "approver" can move it to 
+    approved.
+
+Forced Remarks: If a staff member clicks "Reject" or "Send back for correction," the 
+needRemark flag is true. The UI will physically block the action until the staff member 
+types out a reason, ensuring the vendor knows exactly what to fix.*/
   const act = (title, action, needRemark) => askRemarks(title, async r=>{
     const { error:e } = await sb.rpc("advance_status",
       { p_vendor_id:v.id, p_action:action, p_remarks:r || null });

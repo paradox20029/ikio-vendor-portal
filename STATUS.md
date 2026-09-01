@@ -1,67 +1,94 @@
 # Project status
 
-Last updated: 2026-08-18. This file is the single place to check "where did
-we leave off" — update it whenever something material changes, and read it
-first in any new session before touching code or SQL.
+Last updated: 2026-08-19.
+
+## Start here — how to restore context in a new chat, in one message
+
+Paste this to a fresh Claude Code session started in `C:\IKIO\vendor-portal`:
+
+> Read STATUS.md, then run this to get the database's own record of what's
+> applied (replace ANON_KEY from live/config.js):
+>
+> `curl -s -X POST "https://wokaoqxsualvypgtfnjg.supabase.co/rest/v1/rpc/list_applied_migrations" -H "apikey: ANON_KEY"`
+>
+> Compare that list against the fix-*.sql files present in this folder. Any
+> file not in the returned list has not been applied — run it before
+> assuming its functions exist. Then read DEMO.md, SETUP.md and TEST_PLAN.md
+> before making changes.
+
+That one query is ground truth. Everything else in this file is
+convenience — helpful context, not something to trust blindly. **This
+project has twice given a false "missing" reading** from calling an RPC
+with the wrong argument shape (Postgres reports that identically to "does
+not exist"). Prefer the ledger query above over re-deriving state by
+guessing RPC signatures.
 
 ## What exists
 
 - **Supabase project**: `ikio_vendor_portal`, ref `wokaoqxsualvypgtfnjg`,
   org `paradox20029's Org`, free tier.
-- **Deployed site**: https://ikio-vendor-portal.netlify.app — live, correct
-  folder (`live/` only, 3 files: index.html, config.js, logo.png).
+- **GitHub**: https://github.com/paradox20029/ikio-vendor-portal — public.
+  Front end, schema, and every fix-*.sql are version controlled here. This
+  repo is the durable copy of code and intended migrations; it is NOT a
+  record of what has actually run against the live database — that's what
+  the ledger (above) is for.
+- **Deployed site**: https://ikio-vendor-portal.netlify.app — the `live/`
+  folder only (index.html, config.js, logo.png). Redeploy by dragging that
+  folder onto the site's Deploys tab in Netlify, never onto
+  app.netlify.com/drop again (that mints a new site at a new URL).
 - **Local dev**: `python serve.py` from `C:\IKIO\vendor-portal`, serves on
   `:8030`. No-cache headers, localhost-only bind.
 - **SMTP**: Brevo, custom SMTP configured in Supabase Auth. Sender verified.
+  Key was rotated once already (see bottom of this file) — if mail stops
+  working, check the key hasn't expired or been revoked in Brevo.
 
-## Database — fix files applied, in order
+## Database — the migrations ledger (fix-06 onward)
 
-Run against the live Supabase project, confirmed installed by direct query
-(not assumed):
+`fix-06-migrations-ledger.sql` adds a `_migrations` table and a
+`list_applied_migrations()` RPC — callable with only the anon key, no
+sign-in required. **Run the query in the "Start here" section above before
+trusting anything below.**
 
-| File | What it does |
+| File | What it adds |
 |---|---|
-| `schema.sql` | Base schema. Safe to re-run whole; every fix below is folded into it. |
-| `fix-01-vendor-overview.sql` | `vendor_overview` view + `bank_mask()` — fixed permission-denied bug. |
-| `fix-02-save-bank-details.sql` | `save_bank_details()` RPC — vendor bank writes now go through a function, not a direct table write. |
-| `fix-03-delete-invitation.sql` | `delete_invitation()` — lets staff free up a vendor e-mail to reinvite. |
-| `fix-04-staff-management.sql` | `grant_staff_role`, `revoke_staff_role`, `list_staff_detail` — the Staff tab. **Confirmed installed.** |
-| `fix-05-staff-invitations.sql` | `viewer` role, `staff_invitations` table, `invite_staff`, `claim_staff_role` — Invite a colleague. **Confirmed installed.** |
+| `schema.sql` | Base schema — tables, RLS, roles, invitations. Safe to re-run whole. |
+| `fix-01-vendor-overview.sql` | `bank_mask()` + `vendor_overview` rebuild. |
+| `fix-02-save-bank-details.sql` | `save_bank_details()` — vendor bank writes go through a function, never a direct table write. |
+| `fix-03-delete-invitation.sql` | `delete_invitation()` — frees a vendor e-mail to reinvite. |
+| `fix-04-staff-management.sql` | `grant_staff_role`, `revoke_staff_role`, `list_staff_detail` — the Staff tab. |
+| `fix-05-staff-invitations.sql` | `viewer` role, `staff_invitations`, `invite_staff`, `claim_staff_role` — Invite a colleague. |
+| `fix-06-migrations-ledger.sql` | This ledger itself. **Not yet applied — run it.** |
 
-If starting a new session: don't assume any of these ran. Query directly —
-`select proname from pg_proc where proname = '<function>'`, or try calling
-the RPC and check for `PGRST202` (missing) vs. any other response (exists).
+**House rule from fix-06 onward:** every future fix file ends with an
+`insert into public._migrations (filename, note) values (...)`. A fix file
+that doesn't register itself hasn't fully landed, even if its functions
+work — update the file, don't skip the step.
 
 ## People currently in the system
 
-Real state as of last check — verify again if it's been a while:
+Real state as of last check — verify again if it's been a while, e.g.
+`select email, role from public.user_roles join auth.users using (id)`
+run as an approver, or via the Staff tab.
 
 | E-mail | Role | Notes |
 |---|---|---|
 | YOUR_EMAIL@example.com | approver | The owner account. |
 | COLLEAGUE_EMAIL@example.com | approver | Real inbox. |
-| sotriyusta@tozya.com | checker | **Temp-mail address with real access.** Remove once testing is done — disposable inboxes are readable by anyone who knows the address, and this one can check registrations. |
+| sotriyusta@tozya.com | checker | **Temp-mail address with real access.** Remove once testing is done — disposable inboxes are readable by anyone who knows the address. |
 
 Three vendor invitations exist (`solder_compnay`, `led_company`, `xyz`), all
 status `registered`, all using temp-mail addresses and mock data from
 `TEST_PLAN.md`. Safe to delete and recreate at any time.
 
-## Open thread — mail delivery, unresolved
+## Open thread — mail delivery, last left unresolved
 
-Colleague invitations to `sotriyusta@tozya.com` and `COLLEAGUE_EMAIL@example.com` were
-created successfully (both rows exist in `staff_invitations`), but neither
-reported receiving the sign-in e-mail.
-
-**Not yet established:** whether Supabase's send call itself failed (check
-Resend link → the toast message it returns), or whether it succeeded and
-Brevo failed to deliver (check Brevo → Transactional → Logs) or rate-limited
-(check Supabase → Authentication → Rate Limits — SMTP defaults to 30/hour and
-today's session has sent many). Leading theory is Brevo blocking the
-disposable `tozya.com` domain, unconfirmed — `COLLEAGUE_EMAIL@example.com` (real inbox)
-not receiving anything either would rule that out.
-
-**Next action:** check Brevo's transactional log for both addresses and
-report what it shows.
+Colleague invitations to `sotriyusta@tozya.com` and the real Gmail address
+were created successfully, but neither confirmed receiving the sign-in
+e-mail. Not yet established whether the Supabase send call itself failed,
+or Brevo received it and blocked/filtered it (check Brevo → Transactional →
+Logs — this is the fastest way to settle it). Leading theory was Brevo
+refusing the disposable `tozya.com` domain; unconfirmed either way. If this
+is resolved, delete this section rather than leaving a stale "open thread."
 
 ## Known gaps / not yet done
 
@@ -69,14 +96,17 @@ report what it shows.
   Do this before any real vendor data goes in.
 - **Document upload** (MSMED certificate etc.) has UI and storage policies
   but has not been exercised end to end with a real file.
-- **PORTAL_TEST_MODE** is `true` in `config.js` — keep it that way until
-  genuinely collecting real vendor data.
+- **PORTAL_TEST_MODE** is `true` in `config.js` — keep it until genuinely
+  collecting real vendor data.
 - No real vendor or bank data exists anywhere in the system. Everything is
   mock data per `TEST_PLAN.md`.
+- A **checker** role must exist alongside the approver(s) or nothing can
+  move past "submitted" — verify one is currently granted before demoing.
 
 ## Rotated credentials
 
-Brevo SMTP key was rotated after an accidental deploy briefly exposed
-`SETUP.md` (containing the old SMTP username) at the site root. Old key is
-invalid; current key is in Supabase's SMTP settings only, not written to any
-file in this repo.
+Brevo SMTP key was rotated once after an accidental deploy briefly exposed
+`SETUP.md` (containing the old SMTP username) at the site root — that
+deploy mistake is fixed (only `live/` is now dragged to Netlify) but if mail
+ever stops working unexpectedly, check whether the key needs rotating again
+rather than assuming it's a code problem.
