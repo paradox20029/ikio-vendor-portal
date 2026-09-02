@@ -92,6 +92,40 @@ is authoritative.
 
 ---
 
+## Part 3b — Whoever owns the BP master file
+
+From analysing `BP Master data..1.xlsx` (1,658 rows, dated 11-03-2026).
+Full findings in `STATUS.md`. These two questions change the size and
+shape of the project more than anything else on this list.
+
+**1. Is `Active = Y` the real vendor list?**
+Only 114 of 1,658 rows are marked active, and those 114 are the only
+rows with a contact person filled in. If active is the working set, this
+is a ~114-vendor project, not a 1,658-vendor one — which changes the
+timeline, the SMTP volume, and arguably whether the Cloudflare/SAP
+integration is worth building at all.
+
+**2. How do you intend to reach the 1,511 vendors with no e-mail on
+file?**
+Only 8.9% have an address. The portal cannot invite the rest — there is
+nowhere to send the link. Realistically that means phoning them to
+collect an address before the portal is any use to them, which is
+manual work with a long lead time and nothing to do with the software.
+
+Worth asking at the same time:
+
+3. `Vendor Reg. Form OK` reads **"Not OK" for every single row**. Does
+   that mean nobody has a completed form, or is the column simply not
+   maintained? If the latter, who updates it, and will the portal be
+   expected to write back to it?
+4. `Active` and `E-Mail` barely overlap — 16 rows have both. Are they
+   maintained by different people, and which is more current?
+5. 215 rows show MSME status `0` rather than a value. What does that
+   mean — unknown, or not applicable?
+6. Payment terms are already standardised in SAP (`Net-30*` on 1,376
+   rows, then `100% Advance`, Net-45, Net-60, Net-15). Should the portal
+   offer exactly that list rather than free text?
+
 ## Part 4 — Finance / whoever owns vendor onboarding
 
 Ask this even though it feels obvious. The answer may remove the need

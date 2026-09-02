@@ -1,5 +1,36 @@
 # CLAUDE.md — IKIO Vendor Registration Portal
 
+## The docs, and what each is for
+
+15 files, ~25k words. Nobody should read them end to end.
+
+**To understand how it works** — roughly in this order:
+`CONCEPTS.md` (the vocabulary: tunnels, JWTs, RLS, idempotency, each
+tied to something that actually happened here) → `ARCHITECTURE.md`
+(components and three end-to-end flow traces naming real functions) →
+`DATA_MODEL.md` (tables, RLS, indexes) → `FRONTEND.md` (state,
+components, every backend call) → `DECISIONS.md` (why it is like this,
+what was rejected, what is still open).
+
+**Before changing anything**: `GOTCHAS.md`. It is the list of things
+that have already cost a day.
+
+**To pick the work back up**: `HANDOFF.md`, then `STATUS.md`.
+
+**Operational**: `SETUP.md` (standing up Supabase/Brevo/Netlify),
+`DEMO.md` (demo runbook), `TEST_PLAN.md` (mock data + leak test),
+`ACTION_ITEMS.md` (departmental meeting prep), `admin-queries.sql`.
+
+**Stale, ignore**: `LOVABLE_PROMPT.md` documents an abandoned approach.
+`demo.html` is a mockup that has diverged from the real app.
+
+**Known duplication.** `PORTAL_BANK_MODE` is explained in 9 files and
+`vendor_bank_details` in 10. When either changes, `grep -rl` for it
+rather than trusting any single doc. The reasoning docs (`DECISIONS`,
+`GOTCHAS`) age well; the ones that restate code (`DATA_MODEL`,
+`FRONTEND`, `ARCHITECTURE`) will drift after the next refactor — trust
+the code over them.
+
 ## What this is
 
 Vendor onboarding portal for IKIO Solutions Private Limited, serving

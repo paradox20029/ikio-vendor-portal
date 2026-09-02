@@ -133,6 +133,55 @@ those upload to Supabase *Storage*, which is the same third-party cloud.
 existing rows — but the files themselves must be deleted in the Storage
 UI as well, since removing metadata rows leaves the images in the bucket.
 
+## Real vendor data — findings that constrain rollout
+
+Analysed 2026-09-02 from `BP Master data..1.xlsx` (IKIO Business Partner
+export, dated 11-03-2026, 1,658 rows). Aggregates only — that file is
+not in this repo and should not be committed to it; it contains real
+supplier names, GSTINs and contact details.
+
+**The blocker: only 8.9% of vendors have an e-mail address on file.**
+147 of 1,658. The portal is invitation-by-e-mail end to end —
+`create_invitation()` requires an address, `claim_invitation()` matches
+on it, and magic links are the only way in. **1,511 vendors cannot be
+invited as things stand.** This is a data-collection problem, not a code
+problem, and it is the largest single constraint on rollout.
+
+**Scale is 1,658, not ~500.** Every earlier estimate — the architecture
+document's costs, SMTP volume, Supabase tier — assumed roughly 500.
+
+**But the live working set may be ~114.** Only 114 rows are marked
+`Active = Y`, and those are the *only* rows with a contact person filled
+in (100% of them, versus 0% of the remainder). That is a strong signal
+the active flag is genuinely maintained and the other 1,544 are dormant
+history. **Unconfirmed — see ACTION_ITEMS.md.**
+
+**The two lists barely overlap.** Of the 114 active vendors only 16 have
+an e-mail; 131 vendors have an e-mail but are not marked active. `Active`
+and `E-Mail` appear to be maintained by different people or at different
+times.
+
+Other figures worth knowing:
+
+| Field | Coverage | Note |
+|---|---|---|
+| GSTIN | 100% | the only reliable identifier across the whole file |
+| Payment terms | 100% | highly standardised: 1,376 are `Net-30*`, then `100% Advance` (183), Net-45, Net-60, Net-15 |
+| Address | 100% | |
+| Contact person | 6.9% | all within the active 114 |
+| Mobile | 3.3% | |
+| Vendor Reg. Form OK | **0%** | every row reads "Not OK" — either nobody has a completed form, or the column is unmaintained. Either way it is the problem this portal exists to solve |
+| MSME status | 22% are MSME | 184 Small, 151 Micro, 24 Medium; 1,084 "NO"; 215 ambiguous `0` |
+| Cancelled cheque on file | 0% | no bank documents held at all in this export |
+
+Two consequences for the portal, **not yet acted on** (no code changed):
+
+- `vendors.payment_terms` is free text. SAP already holds a small
+  standard set; a dropdown of those values would match the ERP and
+  improve data quality.
+- MSMED handling in the portal is genuinely load-bearing — roughly a
+  fifth of suppliers are MSME and need the certificate.
+
 ## Known gaps / not yet done
 
 - **Leak test** (`TEST_PLAN.md`) has not been run against the live project.
